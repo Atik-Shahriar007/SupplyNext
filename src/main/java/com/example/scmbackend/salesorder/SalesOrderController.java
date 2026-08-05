@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/sales-orders")
@@ -44,13 +45,10 @@ public class SalesOrderController {
 
         // First pass: check ALL items have enough stock before changing anything
         for (SalesOrderItem item : so.getItems()) {
-            Inventory inventory = inventoryRepository.findAll().stream()
-                    .filter(inv -> inv.getProduct().getId().equals(item.getProduct().getId())
-                            && inv.getWarehouse().getId().equals(so.getWarehouse().getId()))
-                    .findFirst()
-                    .orElse(null);
+            Optional<Inventory> inventoryOpt = inventoryRepository
+                    .findByProductIdAndWarehouseId(item.getProduct().getId(), so.getWarehouse().getId());
 
-            if (inventory == null || inventory.getQuantity() < item.getQuantity()) {
+            if (inventoryOpt.isEmpty() || inventoryOpt.get().getQuantity() < item.getQuantity()) {
                 return ResponseEntity.badRequest().body(
                         "Insufficient stock for product ID " + item.getProduct().getId()
                 );
@@ -59,10 +57,8 @@ public class SalesOrderController {
 
         // Second pass: all checks passed, now actually reduce stock
         for (SalesOrderItem item : so.getItems()) {
-            Inventory inventory = inventoryRepository.findAll().stream()
-                    .filter(inv -> inv.getProduct().getId().equals(item.getProduct().getId())
-                            && inv.getWarehouse().getId().equals(so.getWarehouse().getId()))
-                    .findFirst()
+            Inventory inventory = inventoryRepository
+                    .findByProductIdAndWarehouseId(item.getProduct().getId(), so.getWarehouse().getId())
                     .orElseThrow();
 
             inventory.setQuantity(inventory.getQuantity() - item.getQuantity());

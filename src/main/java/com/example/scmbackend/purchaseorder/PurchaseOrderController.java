@@ -1,5 +1,6 @@
 package com.example.scmbackend.purchaseorder;
 
+import java.util.Optional;
 import com.example.scmbackend.inventory.Inventory;
 import com.example.scmbackend.inventory.InventoryRepository;
 import jakarta.validation.Valid;
@@ -44,25 +45,21 @@ public class PurchaseOrderController {
 
         // For each item in the PO, find or create the matching Inventory record and increase stock
         for (PurchaseOrderItem item : po.getItems()) {
-            Inventory inventory = inventoryRepository.findAll().stream()
-                    .filter(inv -> inv.getProduct().getId().equals(item.getProduct().getId())
-                            && inv.getWarehouse().getId().equals(po.getWarehouse().getId()))
-                    .findFirst()
-                    .orElse(null);
+            Optional<Inventory> existingInventory = inventoryRepository
+                    .findByProductIdAndWarehouseId(item.getProduct().getId(), po.getWarehouse().getId());
 
-            if (inventory != null) {
-                // Existing inventory record found — increase its quantity
+            if (existingInventory.isPresent()) {
+                Inventory inventory = existingInventory.get();
                 inventory.setQuantity(inventory.getQuantity() + item.getQuantity());
                 inventoryRepository.save(inventory);
             } else {
-                // No inventory record yet for this product+warehouse — create one
                 Inventory newInventory = new Inventory();
                 newInventory.setProduct(item.getProduct());
                 newInventory.setWarehouse(po.getWarehouse());
                 newInventory.setQuantity(item.getQuantity());
                 inventoryRepository.save(newInventory);
             }
-        }
+        }  // <-- this closing brace for the for-loop was missing
 
         po.setStatus("RECEIVED");
         purchaseOrderRepository.save(po);
