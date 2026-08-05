@@ -1,5 +1,6 @@
 package com.example.scmbackend.warehouse;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +21,7 @@ public class WarehouseController {
 
     // POST a new warehouse
     @PostMapping
-    public Warehouse createWarehouse(@RequestBody Warehouse warehouse) {
+    public Warehouse createWarehouse(@Valid @RequestBody Warehouse warehouse) {
         return warehouseRepository.save(warehouse);
     }
 }

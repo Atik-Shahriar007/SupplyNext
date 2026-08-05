@@ -1,5 +1,6 @@
 package com.example.scmbackend.supplier;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,7 +19,7 @@ public class SupplierController {
     }
 
     @PostMapping
-    public Supplier createSupplier(@RequestBody Supplier supplier) {
+    public Supplier createSupplier(@Valid @RequestBody Supplier supplier) {
         return supplierRepository.save(supplier);
     }
 }
