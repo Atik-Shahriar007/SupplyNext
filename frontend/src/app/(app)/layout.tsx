@@ -13,12 +13,14 @@ import {
   Truck,
   ShoppingCart,
   ArrowLeftRight,
+  Boxes,
   LogOut,
 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/warehouses", label: "Warehouses", icon: Warehouse },
+  { href: "/inventory", label: "Inventory", icon: Boxes },
   { href: "/products", label: "Products", icon: Package },
   { href: "/categories", label: "Categories", icon: Tags },
   { href: "/suppliers", label: "Suppliers", icon: Truck },
