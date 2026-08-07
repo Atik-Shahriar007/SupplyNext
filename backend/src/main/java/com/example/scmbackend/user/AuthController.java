@@ -33,13 +33,20 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Username already taken");
         }
 
-        user.setPassword(passwordEncoder.encode(user.getPassword())); // hash the password before saving
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         if (user.getRole() == null || user.getRole().isBlank()) {
-            user.setRole("STAFF"); // default role if none provided
+            user.setRole("STAFF");
         }
 
-        userRepository.save(user);
-        return ResponseEntity.ok("User registered successfully");
+        User savedUser = userRepository.save(user);
+
+        UserResponseDto responseDto = new UserResponseDto(
+                savedUser.getId(),
+                savedUser.getUsername(),
+                savedUser.getRole()
+        );
+
+        return ResponseEntity.ok(responseDto);
     }
 
     @PostMapping("/login")
