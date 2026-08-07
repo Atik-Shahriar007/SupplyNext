@@ -72,22 +72,22 @@ export default function ProductsPage() {
   }, []);
 
   async function onSubmit(data: any) {
-    setSubmitError("");
-    try {
-      await api.post("/api/products", {
-        sku: data.sku,
-        name: data.name,
-        description: data.description,
-        price: data.price,
-        category: { id: Number(data.categoryId) },
-        supplier: { id: Number(data.supplierId) },
-      });
-      reset();
-      loadAll();
-    } catch (err: any) {
-      setSubmitError(err.response?.data?.message || "Failed to create product");
-    }
+  setSubmitError("");
+  try {
+    await api.post("/api/products", {
+      sku: data.sku,
+      name: data.name,
+      description: data.description,
+      price: data.price,
+      categoryId: Number(data.categoryId),
+      supplierId: Number(data.supplierId),
+    });
+    reset();
+    loadAll();
+  } catch (err: any) {
+    setSubmitError(err.response?.data?.message || "Failed to create product");
   }
+}
 
   return (
     <div className="space-y-6">
@@ -211,8 +211,8 @@ export default function ProductsPage() {
                     <td className="py-2">{p.sku}</td>
                     <td className="py-2">{p.name}</td>
                     <td className="py-2">${p.price.toFixed(2)}</td>
-                    <td className="py-2">{p.category?.name}</td>
-                    <td className="py-2">{p.supplier?.name}</td>
+                    <td className="py-2">{p.categoryName}</td>
+                    <td className="py-2">{p.supplierName}</td>
                   </tr>
                 ))}
               </tbody>

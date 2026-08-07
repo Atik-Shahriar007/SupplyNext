@@ -7,6 +7,8 @@ export interface Product {
   name: string;
   description: string;
   price: number;
-  category: Category;
-  supplier: Supplier;
+  categoryId: number;
+  categoryName: string;
+  supplierId: number;
+  supplierName: string;
 }
