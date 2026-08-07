@@ -11,15 +11,15 @@ import java.util.List;
 public class ProductController {
 
     @Autowired
-    private ProductRepository productRepository;
+    private ProductService productService;
 
     @GetMapping
     public List<Product> getAllProducts() {
-        return productRepository.findAll();
+        return productService.getAllProducts();
     }
 
     @PostMapping
     public Product createProduct(@Valid @RequestBody Product product) {
-        return productRepository.save(product);
+        return productService.createProduct(product);
     }
 }

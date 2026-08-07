@@ -2,7 +2,6 @@ package com.example.scmbackend.inventory;
 
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,32 +11,20 @@ import java.util.List;
 public class InventoryController {
 
     @Autowired
-    private InventoryRepository inventoryRepository;
+    private InventoryService inventoryService;
 
     @GetMapping
     public List<Inventory> getAllInventory() {
-        return inventoryRepository.findAll();
+        return inventoryService.getAllInventory();
     }
 
     @PostMapping
     public Inventory createInventory(@Valid @RequestBody Inventory inventory) {
-        return inventoryRepository.save(inventory);
+        return inventoryService.createInventory(inventory);
     }
 
     @PatchMapping("/{id}/adjust")
-    public ResponseEntity<?> adjustStock(@PathVariable Long id, @RequestBody StockAdjustmentRequest request) {
-        Inventory inventory = inventoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Inventory record not found"));
-
-        int newQuantity = inventory.getQuantity() + request.getChange();
-
-        if (newQuantity < 0) {
-            return ResponseEntity.badRequest().body("Insufficient stock: cannot go below 0");
-        }
-
-        inventory.setQuantity(newQuantity);
-        inventoryRepository.save(inventory);
-
-        return ResponseEntity.ok(inventory);
+    public Inventory adjustStock(@PathVariable Long id, @RequestBody StockAdjustmentRequest request) {
+        return inventoryService.adjustStock(id, request.getChange());
     }
 }
