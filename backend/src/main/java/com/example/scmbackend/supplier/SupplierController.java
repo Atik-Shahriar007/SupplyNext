@@ -11,15 +11,15 @@ import java.util.List;
 public class SupplierController {
 
     @Autowired
-    private SupplierRepository supplierRepository;
+    private SupplierService supplierService;
 
     @GetMapping
     public List<Supplier> getAllSuppliers() {
-        return supplierRepository.findAll();
+        return supplierService.getAllSuppliers();
     }
 
     @PostMapping
     public Supplier createSupplier(@Valid @RequestBody Supplier supplier) {
-        return supplierRepository.save(supplier);
+        return supplierService.createSupplier(supplier);
     }
 }

@@ -11,15 +11,15 @@ import java.util.List;
 public class CategoryController {
 
     @Autowired
-    private CategoryRepository categoryRepository;
+    private CategoryService categoryService;
 
     @GetMapping
     public List<Category> getAllCategories() {
-        return categoryRepository.findAll();
+        return categoryService.getAllCategories();
     }
 
     @PostMapping
     public Category createCategory(@Valid @RequestBody Category category) {
-        return categoryRepository.save(category);
+        return categoryService.createCategory(category);
     }
 }

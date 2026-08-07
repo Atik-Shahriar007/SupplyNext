@@ -11,17 +11,15 @@ import java.util.List;
 public class WarehouseController {
 
     @Autowired
-    private WarehouseRepository warehouseRepository;
+    private WarehouseService warehouseService;
 
-    // GET all warehouses
     @GetMapping
     public List<Warehouse> getAllWarehouses() {
-        return warehouseRepository.findAll();
+        return warehouseService.getAllWarehouses();
     }
 
-    // POST a new warehouse
     @PostMapping
     public Warehouse createWarehouse(@Valid @RequestBody Warehouse warehouse) {
-        return warehouseRepository.save(warehouse);
+        return warehouseService.createWarehouse(warehouse);
     }
 }
