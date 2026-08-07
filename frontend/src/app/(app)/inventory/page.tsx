@@ -97,9 +97,9 @@ export default function InventoryPage() {
               <tbody>
                 {inventory.map((item) => (
                   <tr key={item.id} className="border-b last:border-0">
-                    <td className="py-2">{item.product?.name}</td>
-                    <td className="py-2">{item.product?.sku}</td>
-                    <td className="py-2">{item.warehouse?.name}</td>
+                    <td className="py-2">{item.productName}</td>
+                    <td className="py-2">{item.productSku}</td>
+                    <td className="py-2">{item.warehouseName}</td>
                     <td className="py-2">
                       <span
                         className={
@@ -131,7 +131,7 @@ export default function InventoryPage() {
       <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adjust Stock: {selectedItem?.product?.name}</DialogTitle>
+            <DialogTitle>Adjust Stock: {selectedItem?.productName}</DialogTitle>
           </DialogHeader>
 
           <div className="py-4">

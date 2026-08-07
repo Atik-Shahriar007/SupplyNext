@@ -1,9 +1,9 @@
-import { Product } from "./product";
-import { Warehouse } from "./warehouse";
-
 export interface Inventory {
   id: number;
-  product: Product;
-  warehouse: Warehouse;
+  productId: number;
+  productName: string;
+  productSku: string;
+  warehouseId: number;
+  warehouseName: string;
   quantity: number;
 }
