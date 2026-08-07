@@ -14,12 +14,12 @@ public class SupplierController {
     private SupplierService supplierService;
 
     @GetMapping
-    public List<Supplier> getAllSuppliers() {
+    public List<SupplierResponseDto> getAllSuppliers() {
         return supplierService.getAllSuppliers();
     }
 
     @PostMapping
-    public Supplier createSupplier(@Valid @RequestBody Supplier supplier) {
-        return supplierService.createSupplier(supplier);
+    public SupplierResponseDto createSupplier(@Valid @RequestBody SupplierRequestDto dto) {
+        return supplierService.createSupplier(dto);
     }
 }

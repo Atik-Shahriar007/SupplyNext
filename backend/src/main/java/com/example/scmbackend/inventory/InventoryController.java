@@ -14,17 +14,17 @@ public class InventoryController {
     private InventoryService inventoryService;
 
     @GetMapping
-    public List<Inventory> getAllInventory() {
+    public List<InventoryResponseDto> getAllInventory() {
         return inventoryService.getAllInventory();
     }
 
     @PostMapping
-    public Inventory createInventory(@Valid @RequestBody Inventory inventory) {
-        return inventoryService.createInventory(inventory);
+    public InventoryResponseDto createInventory(@Valid @RequestBody InventoryRequestDto dto) {
+        return inventoryService.createInventory(dto);
     }
 
     @PatchMapping("/{id}/adjust")
-    public Inventory adjustStock(@PathVariable Long id, @RequestBody StockAdjustmentRequest request) {
+    public InventoryResponseDto adjustStock(@PathVariable Long id, @RequestBody StockAdjustmentRequest request) {
         return inventoryService.adjustStock(id, request.getChange());
     }
 }

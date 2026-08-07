@@ -14,12 +14,12 @@ public class CategoryController {
     private CategoryService categoryService;
 
     @GetMapping
-    public List<Category> getAllCategories() {
+    public List<CategoryResponseDto> getAllCategories() {
         return categoryService.getAllCategories();
     }
 
     @PostMapping
-    public Category createCategory(@Valid @RequestBody Category category) {
-        return categoryService.createCategory(category);
+    public CategoryResponseDto createCategory(@Valid @RequestBody CategoryRequestDto dto) {
+        return categoryService.createCategory(dto);
     }
 }

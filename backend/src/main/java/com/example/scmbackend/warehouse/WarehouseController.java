@@ -14,12 +14,12 @@ public class WarehouseController {
     private WarehouseService warehouseService;
 
     @GetMapping
-    public List<Warehouse> getAllWarehouses() {
+    public List<WarehouseResponseDto> getAllWarehouses() {
         return warehouseService.getAllWarehouses();
     }
 
     @PostMapping
-    public Warehouse createWarehouse(@Valid @RequestBody Warehouse warehouse) {
-        return warehouseService.createWarehouse(warehouse);
+    public WarehouseResponseDto createWarehouse(@Valid @RequestBody WarehouseRequestDto dto) {
+        return warehouseService.createWarehouse(dto);
     }
 }

@@ -1,10 +1,15 @@
 package com.example.scmbackend.inventory;
 
+import com.example.scmbackend.product.Product;
+import com.example.scmbackend.product.ProductRepository;
+import com.example.scmbackend.warehouse.Warehouse;
+import com.example.scmbackend.warehouse.WarehouseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class InventoryService {
@@ -12,15 +17,34 @@ public class InventoryService {
     @Autowired
     private InventoryRepository inventoryRepository;
 
-    public List<Inventory> getAllInventory() {
-        return inventoryRepository.findAll();
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private WarehouseRepository warehouseRepository;
+
+    public List<InventoryResponseDto> getAllInventory() {
+        return inventoryRepository.findAll().stream()
+                .map(this::toResponseDto)
+                .collect(Collectors.toList());
     }
 
-    public Inventory createInventory(Inventory inventory) {
-        return inventoryRepository.save(inventory);
+    public InventoryResponseDto createInventory(InventoryRequestDto dto) {
+        Product product = productRepository.findById(dto.getProductId())
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        Warehouse warehouse = warehouseRepository.findById(dto.getWarehouseId())
+                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+
+        Inventory inventory = new Inventory();
+        inventory.setProduct(product);
+        inventory.setWarehouse(warehouse);
+        inventory.setQuantity(dto.getQuantity());
+
+        Inventory saved = inventoryRepository.save(inventory);
+        return toResponseDto(saved);
     }
 
-    public Inventory adjustStock(Long id, Integer change) {
+    public InventoryResponseDto adjustStock(Long id, Integer change) {
         Inventory inventory = inventoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Inventory record not found"));
 
@@ -31,10 +55,23 @@ public class InventoryService {
         }
 
         inventory.setQuantity(newQuantity);
-        return inventoryRepository.save(inventory);
+        Inventory saved = inventoryRepository.save(inventory);
+        return toResponseDto(saved);
     }
 
     public Optional<Inventory> findByProductAndWarehouse(Long productId, Long warehouseId) {
         return inventoryRepository.findByProductIdAndWarehouseId(productId, warehouseId);
+    }
+
+    private InventoryResponseDto toResponseDto(Inventory inventory) {
+        return new InventoryResponseDto(
+                inventory.getId(),
+                inventory.getProduct().getId(),
+                inventory.getProduct().getName(),
+                inventory.getProduct().getSku(),
+                inventory.getWarehouse().getId(),
+                inventory.getWarehouse().getName(),
+                inventory.getQuantity()
+        );
     }
 }
