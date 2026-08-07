@@ -16,7 +16,7 @@ public class JwtUtil {
             "this-is-a-very-long-secret-key-for-jwt-signing-change-this-later".getBytes()
     );
 
-    private final long EXPIRATION_TIME = 1000 * 60 * 60 * 10; // 10 hours
+    private final long EXPIRATION_TIME = 1000L * 60 * 60 * 24 * 7; // 7 days (dev convenience)
 
     public String generateToken(String username, String role) {
         return Jwts.builder()
