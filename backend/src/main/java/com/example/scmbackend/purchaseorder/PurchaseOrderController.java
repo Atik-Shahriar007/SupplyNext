@@ -14,17 +14,17 @@ public class PurchaseOrderController {
     private PurchaseOrderService purchaseOrderService;
 
     @GetMapping
-    public List<PurchaseOrder> getAllPurchaseOrders() {
+    public List<PurchaseOrderResponseDto> getAllPurchaseOrders() {
         return purchaseOrderService.getAllPurchaseOrders();
     }
 
     @PostMapping
-    public PurchaseOrder createPurchaseOrder(@Valid @RequestBody PurchaseOrder purchaseOrder) {
-        return purchaseOrderService.createPurchaseOrder(purchaseOrder);
+    public PurchaseOrderResponseDto createPurchaseOrder(@Valid @RequestBody PurchaseOrderRequestDto dto) {
+        return purchaseOrderService.createPurchaseOrder(dto);
     }
 
     @PatchMapping("/{id}/receive")
-    public PurchaseOrder receivePurchaseOrder(@PathVariable Long id) {
+    public PurchaseOrderResponseDto receivePurchaseOrder(@PathVariable Long id) {
         return purchaseOrderService.receivePurchaseOrder(id);
     }
 }
