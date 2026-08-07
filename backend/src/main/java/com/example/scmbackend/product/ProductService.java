@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductService {
@@ -21,20 +22,42 @@ public class ProductService {
     @Autowired
     private SupplierRepository supplierRepository;
 
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    public List<ProductResponseDto> getAllProducts() {
+        return productRepository.findAll().stream()
+                .map(this::toResponseDto)
+                .collect(Collectors.toList());
     }
 
-    public Product createProduct(Product product) {
-        Category category = categoryRepository.findById(product.getCategory().getId())
+    public ProductResponseDto createProduct(ProductRequestDto dto) {
+        Category category = categoryRepository.findById(dto.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
-        Supplier supplier = supplierRepository.findById(product.getSupplier().getId())
+        Supplier supplier = supplierRepository.findById(dto.getSupplierId())
                 .orElseThrow(() -> new RuntimeException("Supplier not found"));
 
+        Product product = new Product();
+        product.setSku(dto.getSku());
+        product.setName(dto.getName());
+        product.setDescription(dto.getDescription());
+        product.setPrice(dto.getPrice());
         product.setCategory(category);
         product.setSupplier(supplier);
 
-        return productRepository.save(product);
+        Product saved = productRepository.save(product);
+        return toResponseDto(saved);
+    }
+
+    private ProductResponseDto toResponseDto(Product product) {
+        return new ProductResponseDto(
+                product.getId(),
+                product.getSku(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.getCategory().getId(),
+                product.getCategory().getName(),
+                product.getSupplier().getId(),
+                product.getSupplier().getName()
+        );
     }
 }

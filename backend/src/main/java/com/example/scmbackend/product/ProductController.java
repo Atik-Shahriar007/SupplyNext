@@ -14,12 +14,12 @@ public class ProductController {
     private ProductService productService;
 
     @GetMapping
-    public List<Product> getAllProducts() {
+    public List<ProductResponseDto> getAllProducts() {
         return productService.getAllProducts();
     }
 
     @PostMapping
-    public Product createProduct(@Valid @RequestBody Product product) {
-        return productService.createProduct(product);
+    public ProductResponseDto createProduct(@Valid @RequestBody ProductRequestDto dto) {
+        return productService.createProduct(dto);
     }
 }
