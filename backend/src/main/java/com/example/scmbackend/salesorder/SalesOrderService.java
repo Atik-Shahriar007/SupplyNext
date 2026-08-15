@@ -2,11 +2,16 @@ package com.example.scmbackend.salesorder;
 
 import com.example.scmbackend.inventory.Inventory;
 import com.example.scmbackend.inventory.InventoryRepository;
+import com.example.scmbackend.product.Product;
+import com.example.scmbackend.product.ProductRepository;
+import com.example.scmbackend.warehouse.Warehouse;
+import com.example.scmbackend.warehouse.WarehouseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class SalesOrderService {
@@ -17,19 +22,46 @@ public class SalesOrderService {
     @Autowired
     private InventoryRepository inventoryRepository;
 
-    public List<SalesOrder> getAllSalesOrders() {
-        return salesOrderRepository.findAll();
+    @Autowired
+    private WarehouseRepository warehouseRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    public List<SalesOrderResponseDto> getAllSalesOrders() {
+        return salesOrderRepository.findAll().stream()
+                .map(this::toResponseDto)
+                .collect(Collectors.toList());
     }
 
-    public SalesOrder createSalesOrder(SalesOrder salesOrder) {
-        if (salesOrder.getItems() != null) {
-            salesOrder.getItems().forEach(item -> item.setSalesOrder(salesOrder));
-        }
-        salesOrder.setStatus("PENDING");
-        return salesOrderRepository.save(salesOrder);
+    public SalesOrderResponseDto createSalesOrder(SalesOrderRequestDto dto) {
+        Warehouse warehouse = warehouseRepository.findById(dto.getWarehouseId())
+                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+
+        SalesOrder so = new SalesOrder();
+        so.setCustomerName(dto.getCustomerName());
+        so.setWarehouse(warehouse);
+        so.setOrderDate(dto.getOrderDate());
+        so.setStatus("PENDING");
+
+        List<SalesOrderItem> items = dto.getItems().stream().map(itemDto -> {
+            Product product = productRepository.findById(itemDto.getProductId())
+                    .orElseThrow(() -> new RuntimeException("Product not found: " + itemDto.getProductId()));
+
+            SalesOrderItem item = new SalesOrderItem();
+            item.setProduct(product);
+            item.setQuantity(itemDto.getQuantity());
+            item.setSalesOrder(so);
+            return item;
+        }).collect(Collectors.toList());
+
+        so.setItems(items);
+
+        SalesOrder saved = salesOrderRepository.save(so);
+        return toResponseDto(saved);
     }
 
-    public SalesOrder shipSalesOrder(Long id) {
+    public SalesOrderResponseDto shipSalesOrder(Long id) {
         SalesOrder so = salesOrderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Sales order not found"));
 
@@ -37,7 +69,6 @@ public class SalesOrderService {
             throw new RuntimeException("This sales order was already shipped");
         }
 
-        // First pass: check ALL items have enough stock before changing anything
         for (SalesOrderItem item : so.getItems()) {
             Optional<Inventory> inventoryOpt = inventoryRepository
                     .findByProductIdAndWarehouseId(item.getProduct().getId(), so.getWarehouse().getId());
@@ -49,7 +80,6 @@ public class SalesOrderService {
             }
         }
 
-        // Second pass: all checks passed, now actually reduce stock
         for (SalesOrderItem item : so.getItems()) {
             Inventory inventory = inventoryRepository
                     .findByProductIdAndWarehouseId(item.getProduct().getId(), so.getWarehouse().getId())
@@ -60,6 +90,28 @@ public class SalesOrderService {
         }
 
         so.setStatus("SHIPPED");
-        return salesOrderRepository.save(so);
+        SalesOrder saved = salesOrderRepository.save(so);
+        return toResponseDto(saved);
+    }
+
+    private SalesOrderResponseDto toResponseDto(SalesOrder so) {
+        List<SalesOrderItemDto> itemDtos = so.getItems().stream()
+                .map(item -> new SalesOrderItemDto(
+                        item.getId(),
+                        item.getProduct().getId(),
+                        item.getProduct().getName(),
+                        item.getQuantity()
+                ))
+                .collect(Collectors.toList());
+
+        return new SalesOrderResponseDto(
+                so.getId(),
+                so.getCustomerName(),
+                so.getWarehouse().getId(),
+                so.getWarehouse().getName(),
+                so.getOrderDate(),
+                so.getStatus(),
+                itemDtos
+        );
     }
 }

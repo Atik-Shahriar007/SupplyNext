@@ -14,17 +14,17 @@ public class SalesOrderController {
     private SalesOrderService salesOrderService;
 
     @GetMapping
-    public List<SalesOrder> getAllSalesOrders() {
+    public List<SalesOrderResponseDto> getAllSalesOrders() {
         return salesOrderService.getAllSalesOrders();
     }
 
     @PostMapping
-    public SalesOrder createSalesOrder(@Valid @RequestBody SalesOrder salesOrder) {
-        return salesOrderService.createSalesOrder(salesOrder);
+    public SalesOrderResponseDto createSalesOrder(@Valid @RequestBody SalesOrderRequestDto dto) {
+        return salesOrderService.createSalesOrder(dto);
     }
 
     @PatchMapping("/{id}/ship")
-    public SalesOrder shipSalesOrder(@PathVariable Long id) {
+    public SalesOrderResponseDto shipSalesOrder(@PathVariable Long id) {
         return salesOrderService.shipSalesOrder(id);
     }
 }

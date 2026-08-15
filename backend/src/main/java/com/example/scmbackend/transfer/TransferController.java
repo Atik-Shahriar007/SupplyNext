@@ -14,17 +14,17 @@ public class TransferController {
     private TransferService transferService;
 
     @GetMapping
-    public List<Transfer> getAllTransfers() {
+    public List<TransferResponseDto> getAllTransfers() {
         return transferService.getAllTransfers();
     }
 
     @PostMapping
-    public Transfer createTransfer(@Valid @RequestBody Transfer transfer) {
-        return transferService.createTransfer(transfer);
+    public TransferResponseDto createTransfer(@Valid @RequestBody TransferRequestDto dto) {
+        return transferService.createTransfer(dto);
     }
 
     @PatchMapping("/{id}/complete")
-    public Transfer completeTransfer(@PathVariable Long id) {
+    public TransferResponseDto completeTransfer(@PathVariable Long id) {
         return transferService.completeTransfer(id);
     }
 }
