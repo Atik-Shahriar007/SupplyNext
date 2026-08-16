@@ -1,16 +1,16 @@
-import { Product } from "./product";
-import { Warehouse } from "./warehouse";
-
 export interface TransferItem {
   id: number;
-  product: Product;
+  productId: number;
+  productName: string;
   quantity: number;
 }
 
 export interface Transfer {
   id: number;
-  fromWarehouse: Warehouse;
-  toWarehouse: Warehouse;
+  fromWarehouseId: number;
+  fromWarehouseName: string;
+  toWarehouseId: number;
+  toWarehouseName: string;
   transferDate: string;
   status: string;
   items: TransferItem[];

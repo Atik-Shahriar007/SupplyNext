@@ -52,8 +52,11 @@ export default function SalesOrdersPage() {
   } = useForm({
     resolver: zodResolver(soSchema),
     defaultValues: {
-      items: [{ productId: "", quantity: 1 }],
-    },
+  customerName: "",
+  warehouseId: "",
+  orderDate: "",
+  items: [{ productId: "", quantity: 1 }],
+},
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -85,15 +88,18 @@ export default function SalesOrdersPage() {
     setSubmitError("");
     try {
       await api.post("/api/sales-orders", {
-        customerName: data.customerName,
-        warehouse: { id: Number(data.warehouseId) },
-        orderDate: data.orderDate,
-        items: data.items.map((item: any) => ({
-          product: { id: Number(item.productId) },
-          quantity: item.quantity,
-        })),
-      });
-      reset({ items: [{ productId: "", quantity: 1 }] });
+    customerName: data.customerName,
+    warehouseId: Number(data.warehouseId),
+    orderDate: data.orderDate,
+    items: data.items.map((item: any) => ({
+    productId: Number(item.productId),
+    quantity: item.quantity,
+  })),
+});
+      reset({   customerName: "",
+  warehouseId: "",
+  orderDate: "",
+  items: [{ productId: "", quantity: 1 }], });
       loadAll();
     } catch (err: any) {
       setSubmitError(err.response?.data?.message || "Failed to create sales order");
@@ -254,7 +260,7 @@ export default function SalesOrdersPage() {
                   <div className="mb-2 flex items-center justify-between">
                     <div>
                       <p className="font-medium">
-                        SO #{so.id} — {so.customerName} ← {so.warehouse?.name}
+                        SO #{so.id} — {so.customerName} ← {so.warehouseName}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {so.orderDate} —{" "}
@@ -277,10 +283,10 @@ export default function SalesOrdersPage() {
                   </div>
                   <ul className="text-sm text-muted-foreground">
                     {so.items?.map((item) => (
-                      <li key={item.id}>
-                        {item.product?.name} — Qty: {item.quantity}
-                      </li>
-                    ))}
+                  <li key={item.id}>
+                   {item.productName} — Qty: {item.quantity}
+                  </li>
+                ))}
                   </ul>
                 </div>
               ))}

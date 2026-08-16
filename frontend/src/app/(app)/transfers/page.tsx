@@ -57,8 +57,11 @@ export default function TransfersPage() {
   } = useForm({
     resolver: zodResolver(transferSchema),
     defaultValues: {
-      items: [{ productId: "", quantity: 1 }],
-    },
+  fromWarehouseId: "",
+  toWarehouseId: "",
+  transferDate: "",
+  items: [{ productId: "", quantity: 1 }],
+},
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -90,15 +93,18 @@ export default function TransfersPage() {
     setSubmitError("");
     try {
       await api.post("/api/transfers", {
-        fromWarehouse: { id: Number(data.fromWarehouseId) },
-        toWarehouse: { id: Number(data.toWarehouseId) },
-        transferDate: data.transferDate,
-        items: data.items.map((item: any) => ({
-          product: { id: Number(item.productId) },
-          quantity: item.quantity,
-        })),
-      });
-      reset({ items: [{ productId: "", quantity: 1 }] });
+    fromWarehouseId: Number(data.fromWarehouseId),
+    toWarehouseId: Number(data.toWarehouseId),
+    transferDate: data.transferDate,
+    items: data.items.map((item: any) => ({
+    productId: Number(item.productId),
+    quantity: item.quantity,
+  })),
+});
+      reset({   fromWarehouseId: "",
+  toWarehouseId: "",
+  transferDate: "",
+  items: [{ productId: "", quantity: 1 }], });
       loadAll();
     } catch (err: any) {
       setSubmitError(err.response?.data?.message || "Failed to create transfer");
@@ -276,8 +282,7 @@ export default function TransfersPage() {
                   <div className="mb-2 flex items-center justify-between">
                     <div>
                       <p className="font-medium">
-                        Transfer #{t.id} — {t.fromWarehouse?.name} →{" "}
-                        {t.toWarehouse?.name}
+                      Transfer #{t.id} — {t.fromWarehouseName} → {t.toWarehouseName}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {t.transferDate} —{" "}
@@ -300,10 +305,10 @@ export default function TransfersPage() {
                   </div>
                   <ul className="text-sm text-muted-foreground">
                     {t.items?.map((item) => (
-                      <li key={item.id}>
-                        {item.product?.name} — Qty: {item.quantity}
-                      </li>
-                    ))}
+                  <li key={item.id}>
+                  {item.productName} — Qty: {item.quantity}
+                  </li>
+                  ))}
                   </ul>
                 </div>
               ))}

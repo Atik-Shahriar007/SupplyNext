@@ -42,14 +42,22 @@ export default function ProductsPage() {
   const [submitError, setSubmitError] = useState("");
 
   const {
-    register,
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: zodResolver(productSchema),
-  });
+  register,
+  control,
+  handleSubmit,
+  reset,
+  formState: { errors, isSubmitting },
+} = useForm({
+  resolver: zodResolver(productSchema),
+  defaultValues: {
+    sku: "",
+    name: "",
+    description: "",
+    price: undefined,
+    categoryId: "",
+    supplierId: "",
+  },
+});
 
   function loadAll() {
     setLoading(true);
@@ -82,7 +90,14 @@ export default function ProductsPage() {
       categoryId: Number(data.categoryId),
       supplierId: Number(data.supplierId),
     });
-    reset();
+    reset({
+  sku: "",
+  name: "",
+  description: "",
+  price: undefined,
+  categoryId: "",
+  supplierId: "",
+});
     loadAll();
   } catch (err: any) {
     setSubmitError(err.response?.data?.message || "Failed to create product");

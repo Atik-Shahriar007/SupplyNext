@@ -46,17 +46,20 @@ export default function PurchaseOrdersPage() {
   const [actionError, setActionError] = useState("");
 
   const {
-    register,
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: zodResolver(poSchema),
-    defaultValues: {
-      items: [{ productId: "", quantity: 1 }],
-    },
-  });
+  register,
+  control,
+  handleSubmit,
+  reset,
+  formState: { errors, isSubmitting },
+} = useForm({
+  resolver: zodResolver(poSchema),
+  defaultValues: {
+    supplierId: "",
+    warehouseId: "",
+    orderDate: "",
+    items: [{ productId: "", quantity: 1 }],
+  },
+});
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -89,15 +92,20 @@ export default function PurchaseOrdersPage() {
     setSubmitError("");
     try {
       await api.post("/api/purchase-orders", {
-        supplier: { id: Number(data.supplierId) },
-        warehouse: { id: Number(data.warehouseId) },
-        orderDate: data.orderDate,
-        items: data.items.map((item: any) => ({
-          product: { id: Number(item.productId) },
-          quantity: item.quantity,
-        })),
-      });
-      reset({ items: [{ productId: "", quantity: 1 }] });
+    supplierId: Number(data.supplierId),
+    warehouseId: Number(data.warehouseId),
+    orderDate: data.orderDate,
+    items: data.items.map((item: any) => ({
+    productId: Number(item.productId),
+    quantity: item.quantity,
+  })),
+});
+      reset({
+  supplierId: "",
+  warehouseId: "",
+  orderDate: "",
+  items: [{ productId: "", quantity: 1 }],
+});
       loadAll();
     } catch (err: any) {
       setSubmitError(err.response?.data?.message || "Failed to create purchase order");
@@ -275,7 +283,7 @@ export default function PurchaseOrdersPage() {
                   <div className="mb-2 flex items-center justify-between">
                     <div>
                       <p className="font-medium">
-                        PO #{po.id} — {po.supplier?.name} → {po.warehouse?.name}
+                         PO #{po.id} — {po.supplierName} → {po.warehouseName}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {po.orderDate} —{" "}
@@ -298,10 +306,10 @@ export default function PurchaseOrdersPage() {
                   </div>
                   <ul className="text-sm text-muted-foreground">
                     {po.items?.map((item) => (
-                      <li key={item.id}>
-                        {item.product?.name} — Qty: {item.quantity}
-                      </li>
-                    ))}
+                   <li key={item.id}>
+                  {item.productName} — Qty: {item.quantity}
+                  </li>
+                   ))}
                   </ul>
                 </div>
               ))}

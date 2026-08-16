@@ -1,17 +1,16 @@
-import { Product } from "./product";
-import { Warehouse } from "./warehouse";
-import { Supplier } from "./supplier";
-
 export interface PurchaseOrderItem {
   id: number;
-  product: Product;
+  productId: number;
+  productName: string;
   quantity: number;
 }
 
 export interface PurchaseOrder {
   id: number;
-  supplier: Supplier;
-  warehouse: Warehouse;
+  supplierId: number;
+  supplierName: string;
+  warehouseId: number;
+  warehouseName: string;
   orderDate: string;
   status: string;
   items: PurchaseOrderItem[];

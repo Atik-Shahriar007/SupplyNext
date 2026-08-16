@@ -1,16 +1,15 @@
-import { Product } from "./product";
-import { Warehouse } from "./warehouse";
-
 export interface SalesOrderItem {
   id: number;
-  product: Product;
+  productId: number;
+  productName: string;
   quantity: number;
 }
 
 export interface SalesOrder {
   id: number;
   customerName: string;
-  warehouse: Warehouse;
+  warehouseId: number;
+  warehouseName: string;
   orderDate: string;
   status: string;
   items: SalesOrderItem[];
