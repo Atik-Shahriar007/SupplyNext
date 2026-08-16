@@ -15,3 +15,12 @@ export interface Transfer {
   status: string;
   items: TransferItem[];
 }
+export interface PagedResponse<T> {
+  content: T[];
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}

@@ -5,7 +5,7 @@ import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import api from "@/lib/api";
-import { PurchaseOrder } from "@/types/purchaseorder";
+import { PurchaseOrder, PagedResponse } from "@/types/purchaseorder";
 import { Supplier } from "@/types/supplier";
 import { Warehouse } from "@/types/warehouse";
 import { Product } from "@/types/product";
@@ -44,22 +44,24 @@ export default function PurchaseOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [submitError, setSubmitError] = useState("");
   const [actionError, setActionError] = useState("");
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const {
-  register,
-  control,
-  handleSubmit,
-  reset,
-  formState: { errors, isSubmitting },
-} = useForm({
-  resolver: zodResolver(poSchema),
-  defaultValues: {
-    supplierId: "",
-    warehouseId: "",
-    orderDate: "",
-    items: [{ productId: "", quantity: 1 }],
-  },
-});
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(poSchema),
+    defaultValues: {
+      supplierId: "",
+      warehouseId: "",
+      orderDate: "",
+      items: [{ productId: "", quantity: 1 }],
+    },
+  });
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -69,16 +71,17 @@ export default function PurchaseOrdersPage() {
   function loadAll() {
     setLoading(true);
     Promise.all([
-      api.get<PurchaseOrder[]>("/api/purchase-orders"),
-      api.get<Supplier[]>("/api/suppliers"),
-      api.get<Warehouse[]>("/api/warehouses"),
-      api.get<Product[]>("/api/products"),
+      api.get<PagedResponse<PurchaseOrder>>(`/api/purchase-orders?page=${page}&size=10`),
+      api.get<PagedResponse<Supplier>>("/api/suppliers?size=100"),
+      api.get<PagedResponse<Warehouse>>("/api/warehouses?size=100"),
+      api.get<PagedResponse<Product>>("/api/products?size=100"),
     ])
       .then(([ordersRes, suppliersRes, warehousesRes, productsRes]) => {
-        setOrders(ordersRes.data);
-        setSuppliers(suppliersRes.data);
-        setWarehouses(warehousesRes.data);
-        setProducts(productsRes.data);
+        setOrders(ordersRes.data.content);
+        setTotalPages(ordersRes.data.totalPages);
+        setSuppliers(suppliersRes.data.content);
+        setWarehouses(warehousesRes.data.content);
+        setProducts(productsRes.data.content);
       })
       .catch((err) => console.error("Failed to load data:", err))
       .finally(() => setLoading(false));
@@ -86,26 +89,26 @@ export default function PurchaseOrdersPage() {
 
   useEffect(() => {
     loadAll();
-  }, []);
+  }, [page]);
 
   async function onSubmit(data: any) {
     setSubmitError("");
     try {
       await api.post("/api/purchase-orders", {
-    supplierId: Number(data.supplierId),
-    warehouseId: Number(data.warehouseId),
-    orderDate: data.orderDate,
-    items: data.items.map((item: any) => ({
-    productId: Number(item.productId),
-    quantity: item.quantity,
-  })),
-});
+        supplierId: Number(data.supplierId),
+        warehouseId: Number(data.warehouseId),
+        orderDate: data.orderDate,
+        items: data.items.map((item: any) => ({
+          productId: Number(item.productId),
+          quantity: item.quantity,
+        })),
+      });
       reset({
-  supplierId: "",
-  warehouseId: "",
-  orderDate: "",
-  items: [{ productId: "", quantity: 1 }],
-});
+        supplierId: "",
+        warehouseId: "",
+        orderDate: "",
+        items: [{ productId: "", quantity: 1 }],
+      });
       loadAll();
     } catch (err: any) {
       setSubmitError(err.response?.data?.message || "Failed to create purchase order");
@@ -283,7 +286,7 @@ export default function PurchaseOrdersPage() {
                   <div className="mb-2 flex items-center justify-between">
                     <div>
                       <p className="font-medium">
-                         PO #{po.id} — {po.supplierName} → {po.warehouseName}
+                        PO #{po.id} — {po.supplierName} → {po.warehouseName}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {po.orderDate} —{" "}
@@ -306,13 +309,39 @@ export default function PurchaseOrdersPage() {
                   </div>
                   <ul className="text-sm text-muted-foreground">
                     {po.items?.map((item) => (
-                   <li key={item.id}>
-                  {item.productName} — Qty: {item.quantity}
-                  </li>
-                   ))}
+                      <li key={item.id}>
+                        {item.productName} — Qty: {item.quantity}
+                      </li>
+                    ))}
                   </ul>
                 </div>
               ))}
+            </div>
+          )}
+
+          {!loading && orders.length > 0 && (
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Page {page + 1} of {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 0}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

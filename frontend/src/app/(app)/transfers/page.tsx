@@ -5,7 +5,7 @@ import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import api from "@/lib/api";
-import { Transfer } from "@/types/transfer";
+import { Transfer, PagedResponse } from "@/types/transfer";
 import { Warehouse } from "@/types/warehouse";
 import { Product } from "@/types/product";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,8 @@ export default function TransfersPage() {
   const [loading, setLoading] = useState(true);
   const [submitError, setSubmitError] = useState("");
   const [actionError, setActionError] = useState("");
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const {
     register,
@@ -57,11 +59,11 @@ export default function TransfersPage() {
   } = useForm({
     resolver: zodResolver(transferSchema),
     defaultValues: {
-  fromWarehouseId: "",
-  toWarehouseId: "",
-  transferDate: "",
-  items: [{ productId: "", quantity: 1 }],
-},
+      fromWarehouseId: "",
+      toWarehouseId: "",
+      transferDate: "",
+      items: [{ productId: "", quantity: 1 }],
+    },
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -72,14 +74,15 @@ export default function TransfersPage() {
   function loadAll() {
     setLoading(true);
     Promise.all([
-      api.get<Transfer[]>("/api/transfers"),
-      api.get<Warehouse[]>("/api/warehouses"),
-      api.get<Product[]>("/api/products"),
+      api.get<PagedResponse<Transfer>>(`/api/transfers?page=${page}&size=10`),
+      api.get<PagedResponse<Warehouse>>("/api/warehouses?size=100"),
+      api.get<PagedResponse<Product>>("/api/products?size=100"),
     ])
       .then(([transfersRes, warehousesRes, productsRes]) => {
-        setTransfers(transfersRes.data);
-        setWarehouses(warehousesRes.data);
-        setProducts(productsRes.data);
+        setTransfers(transfersRes.data.content);
+        setTotalPages(transfersRes.data.totalPages);
+        setWarehouses(warehousesRes.data.content);
+        setProducts(productsRes.data.content);
       })
       .catch((err) => console.error("Failed to load data:", err))
       .finally(() => setLoading(false));
@@ -87,24 +90,26 @@ export default function TransfersPage() {
 
   useEffect(() => {
     loadAll();
-  }, []);
+  }, [page]);
 
   async function onSubmit(data: any) {
     setSubmitError("");
     try {
       await api.post("/api/transfers", {
-    fromWarehouseId: Number(data.fromWarehouseId),
-    toWarehouseId: Number(data.toWarehouseId),
-    transferDate: data.transferDate,
-    items: data.items.map((item: any) => ({
-    productId: Number(item.productId),
-    quantity: item.quantity,
-  })),
-});
-      reset({   fromWarehouseId: "",
-  toWarehouseId: "",
-  transferDate: "",
-  items: [{ productId: "", quantity: 1 }], });
+        fromWarehouseId: Number(data.fromWarehouseId),
+        toWarehouseId: Number(data.toWarehouseId),
+        transferDate: data.transferDate,
+        items: data.items.map((item: any) => ({
+          productId: Number(item.productId),
+          quantity: item.quantity,
+        })),
+      });
+      reset({
+        fromWarehouseId: "",
+        toWarehouseId: "",
+        transferDate: "",
+        items: [{ productId: "", quantity: 1 }],
+      });
       loadAll();
     } catch (err: any) {
       setSubmitError(err.response?.data?.message || "Failed to create transfer");
@@ -282,7 +287,7 @@ export default function TransfersPage() {
                   <div className="mb-2 flex items-center justify-between">
                     <div>
                       <p className="font-medium">
-                      Transfer #{t.id} — {t.fromWarehouseName} → {t.toWarehouseName}
+                        Transfer #{t.id} — {t.fromWarehouseName} → {t.toWarehouseName}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {t.transferDate} —{" "}
@@ -305,13 +310,39 @@ export default function TransfersPage() {
                   </div>
                   <ul className="text-sm text-muted-foreground">
                     {t.items?.map((item) => (
-                  <li key={item.id}>
-                  {item.productName} — Qty: {item.quantity}
-                  </li>
-                  ))}
+                      <li key={item.id}>
+                        {item.productName} — Qty: {item.quantity}
+                      </li>
+                    ))}
                   </ul>
                 </div>
               ))}
+            </div>
+          )}
+
+          {!loading && transfers.length > 0 && (
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Page {page + 1} of {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 0}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

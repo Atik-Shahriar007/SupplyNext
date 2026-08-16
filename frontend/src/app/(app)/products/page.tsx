@@ -65,14 +65,14 @@ export default function ProductsPage() {
   setLoading(true);
   Promise.all([
     api.get<PagedResponse<Product>>(`/api/products?page=${page}&size=10`),
-    api.get<Category[]>("/api/categories"),
-    api.get<Supplier[]>("/api/suppliers"),
+    api.get<PagedResponse<Category>>("/api/categories?size=100"),
+    api.get<PagedResponse<Supplier>>("/api/suppliers?size=100"),
   ])
     .then(([productsRes, categoriesRes, suppliersRes]) => {
       setProducts(productsRes.data.content);
       setTotalPages(productsRes.data.totalPages);
-      setCategories(categoriesRes.data);
-      setSuppliers(suppliersRes.data);
+      setCategories(categoriesRes.data.content);
+      setSuppliers(suppliersRes.data.content);
     })
     .catch((err) => console.error("Failed to load data:", err))
     .finally(() => setLoading(false));

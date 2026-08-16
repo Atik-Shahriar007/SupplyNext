@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
-import { Inventory } from "@/types/inventory";
+import { Inventory, PagedResponse } from "@/types/inventory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,11 +13,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Field, FieldLabel, FieldError } from "@/components/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<Inventory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [selectedItem, setSelectedItem] = useState<Inventory | null>(null);
   const [adjustAmount, setAdjustAmount] = useState("");
@@ -27,15 +29,18 @@ export default function InventoryPage() {
   function loadInventory() {
     setLoading(true);
     api
-      .get<Inventory[]>("/api/inventory")
-      .then((res) => setInventory(res.data))
+      .get<PagedResponse<Inventory>>(`/api/inventory?page=${page}&size=10`)
+      .then((res) => {
+        setInventory(res.data.content);
+        setTotalPages(res.data.totalPages);
+      })
       .catch((err) => console.error("Failed to load inventory:", err))
       .finally(() => setLoading(false));
   }
 
   useEffect(() => {
     loadInventory();
-  }, []);
+  }, [page]);
 
   function openAdjustDialog(item: Inventory) {
     setSelectedItem(item);
@@ -59,7 +64,7 @@ export default function InventoryPage() {
       setSelectedItem(null);
       loadInventory();
     } catch (err: any) {
-      setAdjustError(err.response?.data || "Failed to adjust stock");
+      setAdjustError(err.response?.data?.message || "Failed to adjust stock");
     } finally {
       setSubmitting(false);
     }
@@ -124,6 +129,32 @@ export default function InventoryPage() {
                 ))}
               </tbody>
             </table>
+          )}
+
+          {!loading && inventory.length > 0 && (
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Page {page + 1} of {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 0}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -14,3 +14,12 @@ export interface SalesOrder {
   status: string;
   items: SalesOrderItem[];
 }
+export interface PagedResponse<T> {
+  content: T[];
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}

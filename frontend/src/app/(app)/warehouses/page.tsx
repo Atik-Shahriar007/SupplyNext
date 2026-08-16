@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import api from "@/lib/api";
-import { Warehouse } from "@/types/warehouse";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Field, FieldLabel, FieldError } from "@/components/ui/field";
+import { Warehouse, PagedResponse } from "@/types/warehouse";
 
 const warehouseSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -27,6 +27,8 @@ type WarehouseFormValues = z.infer<typeof warehouseSchema>;
 export default function WarehousesPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [submitError, setSubmitError] = useState("");
 
   const {
@@ -39,17 +41,18 @@ export default function WarehousesPage() {
 });
 
   function loadWarehouses() {
-    setLoading(true);
-    api
-      .get<Warehouse[]>("/api/warehouses")
-      .then((res) => setWarehouses(res.data))
-      .catch((err) => console.error("Failed to load warehouses:", err))
-      .finally(() => setLoading(false));
-  }
+  setLoading(true);
+  api
+    .get<PagedResponse<Warehouse>>(`/api/warehouses?page=${page}&size=10`)
+    .then((res) => {
+      setWarehouses(res.data.content);
+      setTotalPages(res.data.totalPages);
+    })
+    .catch((err) => console.error("Failed to load warehouses:", err))
+    .finally(() => setLoading(false));
+}
 
-  useEffect(() => {
-    loadWarehouses();
-  }, []);
+  useEffect(() => { loadWarehouses(); }, [page]);
 
   async function onSubmit(data: WarehouseFormValues) {
     setSubmitError("");
@@ -143,6 +146,32 @@ export default function WarehousesPage() {
               </tbody>
             </table>
           )}
+
+          {!loading && warehouses.length > 0 && (
+  <div className="mt-4 flex items-center justify-between">
+    <p className="text-sm text-muted-foreground">
+      Page {page + 1} of {totalPages}
+    </p>
+    <div className="flex gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={page === 0}
+        onClick={() => setPage((p) => p - 1)}
+      >
+        Previous
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={page >= totalPages - 1}
+        onClick={() => setPage((p) => p + 1)}
+      >
+        Next
+      </Button>
+    </div>
+  </div>
+)}
         </CardContent>
       </Card>
     </div>

@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import api from "@/lib/api";
-import { Supplier } from "@/types/supplier";
+import { Supplier, PagedResponse } from "@/types/supplier";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,6 +28,8 @@ export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitError, setSubmitError] = useState("");
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const {
     register,
@@ -36,26 +38,42 @@ export default function SuppliersPage() {
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(supplierSchema),
+    defaultValues: {
+      name: "",
+      contactPerson: "",
+      phone: "",
+      email: "",
+      address: "",
+    },
   });
 
   function loadSuppliers() {
     setLoading(true);
     api
-      .get<Supplier[]>("/api/suppliers")
-      .then((res) => setSuppliers(res.data))
+      .get<PagedResponse<Supplier>>(`/api/suppliers?page=${page}&size=10`)
+      .then((res) => {
+        setSuppliers(res.data.content);
+        setTotalPages(res.data.totalPages);
+      })
       .catch((err) => console.error("Failed to load suppliers:", err))
       .finally(() => setLoading(false));
   }
 
   useEffect(() => {
     loadSuppliers();
-  }, []);
+  }, [page]);
 
   async function onSubmit(data: any) {
     setSubmitError("");
     try {
       await api.post("/api/suppliers", data);
-      reset();
+      reset({
+        name: "",
+        contactPerson: "",
+        phone: "",
+        email: "",
+        address: "",
+      });
       loadSuppliers();
     } catch (err: any) {
       setSubmitError(
@@ -156,6 +174,32 @@ export default function SuppliersPage() {
                 ))}
               </tbody>
             </table>
+          )}
+
+          {!loading && suppliers.length > 0 && (
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Page {page + 1} of {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 0}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
