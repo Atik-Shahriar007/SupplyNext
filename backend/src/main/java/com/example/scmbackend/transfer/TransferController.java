@@ -3,6 +3,8 @@ package com.example.scmbackend.transfer;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 
@@ -14,8 +16,11 @@ public class TransferController {
     private TransferService transferService;
 
     @GetMapping
-    public List<TransferResponseDto> getAllTransfers() {
-        return transferService.getAllTransfers();
+    public Page<TransferResponseDto> getAllTransfers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return transferService.getAllTransfers(PageRequest.of(page, size));
     }
 
     @PostMapping

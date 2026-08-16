@@ -6,6 +6,8 @@ import com.example.scmbackend.warehouse.Warehouse;
 import com.example.scmbackend.warehouse.WarehouseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,10 +25,8 @@ public class InventoryService {
     @Autowired
     private WarehouseRepository warehouseRepository;
 
-    public List<InventoryResponseDto> getAllInventory() {
-        return inventoryRepository.findAll().stream()
-                .map(this::toResponseDto)
-                .collect(Collectors.toList());
+    public Page<InventoryResponseDto> getAllInventory(Pageable pageable) {
+        return inventoryRepository.findAll(pageable).map(this::toResponseDto);
     }
 
     public InventoryResponseDto createInventory(InventoryRequestDto dto) {

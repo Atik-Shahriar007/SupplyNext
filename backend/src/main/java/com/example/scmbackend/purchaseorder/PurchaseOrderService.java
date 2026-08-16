@@ -10,6 +10,8 @@ import com.example.scmbackend.warehouse.Warehouse;
 import com.example.scmbackend.warehouse.WarehouseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -33,10 +35,8 @@ public class PurchaseOrderService {
     @Autowired
     private ProductRepository productRepository;
 
-    public List<PurchaseOrderResponseDto> getAllPurchaseOrders() {
-        return purchaseOrderRepository.findAll().stream()
-                .map(this::toResponseDto)
-                .collect(Collectors.toList());
+    public Page<PurchaseOrderResponseDto> getAllPurchaseOrders(Pageable pageable) {
+        return purchaseOrderRepository.findAll(pageable).map(this::toResponseDto);
     }
 
     public PurchaseOrderResponseDto createPurchaseOrder(PurchaseOrderRequestDto dto) {

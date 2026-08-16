@@ -3,6 +3,8 @@ package com.example.scmbackend.purchaseorder;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 
@@ -14,8 +16,11 @@ public class PurchaseOrderController {
     private PurchaseOrderService purchaseOrderService;
 
     @GetMapping
-    public List<PurchaseOrderResponseDto> getAllPurchaseOrders() {
-        return purchaseOrderService.getAllPurchaseOrders();
+    public Page<PurchaseOrderResponseDto> getAllPurchaseOrders(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return purchaseOrderService.getAllPurchaseOrders(PageRequest.of(page, size));
     }
 
     @PostMapping

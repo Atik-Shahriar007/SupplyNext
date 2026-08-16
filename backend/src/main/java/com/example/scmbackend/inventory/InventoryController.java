@@ -3,6 +3,9 @@ package com.example.scmbackend.inventory;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+
 
 import java.util.List;
 
@@ -14,8 +17,11 @@ public class InventoryController {
     private InventoryService inventoryService;
 
     @GetMapping
-    public List<InventoryResponseDto> getAllInventory() {
-        return inventoryService.getAllInventory();
+    public Page<InventoryResponseDto> getAllInventory(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return inventoryService.getAllInventory(PageRequest.of(page, size));
     }
 
     @PostMapping
