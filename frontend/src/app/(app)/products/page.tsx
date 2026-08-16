@@ -1,11 +1,11 @@
 "use client";
 
+import { Product, PagedResponse } from "@/types/product";
 import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import api from "@/lib/api";
-import { Product } from "@/types/product";
 import { Category } from "@/types/category";
 import { Supplier } from "@/types/supplier";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,8 @@ const productSchema = z.object({
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,24 +62,25 @@ export default function ProductsPage() {
 });
 
   function loadAll() {
-    setLoading(true);
-    Promise.all([
-      api.get<Product[]>("/api/products"),
-      api.get<Category[]>("/api/categories"),
-      api.get<Supplier[]>("/api/suppliers"),
-    ])
-      .then(([productsRes, categoriesRes, suppliersRes]) => {
-        setProducts(productsRes.data);
-        setCategories(categoriesRes.data);
-        setSuppliers(suppliersRes.data);
-      })
-      .catch((err) => console.error("Failed to load data:", err))
-      .finally(() => setLoading(false));
-  }
+  setLoading(true);
+  Promise.all([
+    api.get<PagedResponse<Product>>(`/api/products?page=${page}&size=10`),
+    api.get<Category[]>("/api/categories"),
+    api.get<Supplier[]>("/api/suppliers"),
+  ])
+    .then(([productsRes, categoriesRes, suppliersRes]) => {
+      setProducts(productsRes.data.content);
+      setTotalPages(productsRes.data.totalPages);
+      setCategories(categoriesRes.data);
+      setSuppliers(suppliersRes.data);
+    })
+    .catch((err) => console.error("Failed to load data:", err))
+    .finally(() => setLoading(false));
+}
 
   useEffect(() => {
-    loadAll();
-  }, []);
+  loadAll();
+}, [page]);
 
   async function onSubmit(data: any) {
   setSubmitError("");
@@ -233,6 +236,32 @@ export default function ProductsPage() {
               </tbody>
             </table>
           )}
+
+          {!loading && products.length > 0 && (
+  <div className="mt-4 flex items-center justify-between">
+    <p className="text-sm text-muted-foreground">
+      Page {page + 1} of {totalPages}
+    </p>
+    <div className="flex gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={page === 0}
+        onClick={() => setPage((p) => p - 1)}
+      >
+        Previous
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={page >= totalPages - 1}
+        onClick={() => setPage((p) => p + 1)}
+      >
+        Next
+      </Button>
+    </div>
+  </div>
+)}
         </CardContent>
       </Card>
     </div>

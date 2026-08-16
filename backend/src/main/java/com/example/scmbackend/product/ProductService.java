@@ -6,6 +6,8 @@ import com.example.scmbackend.supplier.Supplier;
 import com.example.scmbackend.supplier.SupplierRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -22,10 +24,9 @@ public class ProductService {
     @Autowired
     private SupplierRepository supplierRepository;
 
-    public List<ProductResponseDto> getAllProducts() {
-        return productRepository.findAll().stream()
-                .map(this::toResponseDto)
-                .collect(Collectors.toList());
+    public Page<ProductResponseDto> getAllProducts(Pageable pageable) {
+        return productRepository.findAll(pageable)
+                .map(this::toResponseDto);
     }
 
     public ProductResponseDto createProduct(ProductRequestDto dto) {
