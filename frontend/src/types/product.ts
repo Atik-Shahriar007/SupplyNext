@@ -4,6 +4,9 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  unitCost: number | null;
+  holdingCostRate: number | null;
+  orderingCost: number | null;
   categoryId: number;
   categoryName: string;
   supplierId: number;
