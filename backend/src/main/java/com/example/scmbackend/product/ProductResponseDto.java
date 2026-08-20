@@ -13,6 +13,9 @@ public class ProductResponseDto {
     private String name;
     private String description;
     private Double price;
+    private Double unitCost;
+    private Double holdingCostRate;
+    private Double orderingCost;
     private Long categoryId;
     private String categoryName;
     private Long supplierId;

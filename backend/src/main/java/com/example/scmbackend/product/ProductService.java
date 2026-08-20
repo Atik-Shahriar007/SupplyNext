@@ -9,9 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 @Service
 public class ProductService {
 
@@ -37,15 +34,38 @@ public class ProductService {
                 .orElseThrow(() -> new RuntimeException("Supplier not found"));
 
         Product product = new Product();
+        applyDto(product, dto, category, supplier);
+
+        Product saved = productRepository.save(product);
+        return toResponseDto(saved);
+    }
+
+    public ProductResponseDto updateProduct(Long id, ProductRequestDto dto) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found: " + id));
+
+        Category category = categoryRepository.findById(dto.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        Supplier supplier = supplierRepository.findById(dto.getSupplierId())
+                .orElseThrow(() -> new RuntimeException("Supplier not found"));
+
+        applyDto(product, dto, category, supplier);
+
+        Product saved = productRepository.save(product);
+        return toResponseDto(saved);
+    }
+
+    private void applyDto(Product product, ProductRequestDto dto, Category category, Supplier supplier) {
         product.setSku(dto.getSku());
         product.setName(dto.getName());
         product.setDescription(dto.getDescription());
         product.setPrice(dto.getPrice());
+        product.setUnitCost(dto.getUnitCost());
+        product.setHoldingCostRate(dto.getHoldingCostRate());
+        product.setOrderingCost(dto.getOrderingCost());
         product.setCategory(category);
         product.setSupplier(supplier);
-
-        Product saved = productRepository.save(product);
-        return toResponseDto(saved);
     }
 
     private ProductResponseDto toResponseDto(Product product) {
@@ -55,6 +75,9 @@ public class ProductService {
                 product.getName(),
                 product.getDescription(),
                 product.getPrice(),
+                product.getUnitCost(),
+                product.getHoldingCostRate(),
+                product.getOrderingCost(),
                 product.getCategory().getId(),
                 product.getCategory().getName(),
                 product.getSupplier().getId(),
