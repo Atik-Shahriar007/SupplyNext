@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.ArrayList;
 
 
 @Service
@@ -354,6 +355,73 @@ public class AnalyticsService {
 
     private static Double round2(double val) {
         return Math.round(val * 100.0) / 100.0;
+    }
+
+    //dead stock logic
+    private static final int DEFAULT_DEAD_STOCK_THRESHOLD_DAYS = 90;
+
+    public List<DeadStockResponseDto> detectDeadStock(int thresholdDays) {
+        List<Inventory> allInventory = inventoryRepository.findAll();
+        Map<Long, List<Inventory>> inventoryByProduct = allInventory.stream()
+                .collect(Collectors.groupingBy(inv -> inv.getProduct().getId()));
+
+        Map<Long, LocalDate> lastSaleDateByProduct = computeLastSaleDates();
+        LocalDate today = LocalDate.now();
+
+        List<DeadStockResponseDto> results = new ArrayList<>();
+
+        for (Map.Entry<Long, List<Inventory>> entry : inventoryByProduct.entrySet()) {
+            List<Inventory> invList = entry.getValue();
+            int totalQty = invList.stream().mapToInt(Inventory::getQuantity).sum();
+
+            if (totalQty <= 0) continue; // no stock on hand -> not "dead stock", just out of stock
+
+            Product product = invList.get(0).getProduct();
+            LocalDate lastSaleDate = lastSaleDateByProduct.get(entry.getKey());
+
+            Integer daysSinceLastSale = lastSaleDate != null
+                    ? (int) ChronoUnit.DAYS.between(lastSaleDate, today)
+                    : null;
+
+            boolean isDead = lastSaleDate == null || daysSinceLastSale >= thresholdDays;
+
+            String note = lastSaleDate == null
+                    ? "No shipped sales found for this product — never sold."
+                    : null;
+
+            List<WarehouseQuantityDto> warehouseStocks = invList.stream()
+                    .map(inv -> new WarehouseQuantityDto(
+                            inv.getWarehouse().getId(),
+                            inv.getWarehouse().getName(),
+                            inv.getQuantity()
+                    ))
+                    .collect(Collectors.toList());
+
+            results.add(new DeadStockResponseDto(
+                    product.getId(), product.getSku(), product.getName(),
+                    totalQty, lastSaleDate, daysSinceLastSale, thresholdDays, isDead, note,
+                    warehouseStocks
+            ));
+        }
+
+        return results;
+    }
+
+    private Map<Long, LocalDate> computeLastSaleDates() {
+        List<SalesOrder> shippedOrders = getShippedSalesOrders();
+        Map<Long, LocalDate> lastSale = new HashMap<>();
+
+        for (SalesOrder so : shippedOrders) {
+            LocalDate date = so.getOrderDate();
+            for (SalesOrderItem item : so.getItems()) {
+                Long productId = item.getProduct().getId();
+                LocalDate current = lastSale.get(productId);
+                if (current == null || date.isAfter(current)) {
+                    lastSale.put(productId, date);
+                }
+            }
+        }
+        return lastSale;
     }
 
 }

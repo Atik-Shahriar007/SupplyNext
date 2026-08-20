@@ -50,5 +50,10 @@ public class AnalyticsController {
             @RequestParam(defaultValue = "0.95") double serviceLevel) {
         return analyticsService.calculateReorderPointForProduct(productId, serviceLevel);
     }
+    @GetMapping("/dead-stock")
+    public List<DeadStockResponseDto> getDeadStock(
+            @RequestParam(defaultValue = "90") int thresholdDays) {
+        return analyticsService.detectDeadStock(thresholdDays);
+    }
 }
 

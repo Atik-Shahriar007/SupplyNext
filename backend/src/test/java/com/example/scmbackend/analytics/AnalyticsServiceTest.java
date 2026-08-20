@@ -349,4 +349,94 @@ class AnalyticsServiceTest {
         assertNull(result.getWarehouseStock().get(0).getBelowReorderPoint());
         assertEquals(50, result.getWarehouseStock().get(0).getCurrentQuantity());
     }
+
+    @Test
+    void detectDeadStock_flagsProductWithNoSalesHistory_asDeadStock() {
+        Product product = new Product();
+        product.setId(1L); product.setSku("P1"); product.setName("Product 1");
+
+        Warehouse warehouse = new Warehouse();
+        warehouse.setId(1L); warehouse.setName("WH");
+
+        Inventory inv = new Inventory();
+        inv.setProduct(product); inv.setWarehouse(warehouse); inv.setQuantity(20);
+
+        when(inventoryRepository.findAll()).thenReturn(List.of(inv));
+        when(salesOrderRepository.findAll()).thenReturn(List.of());
+
+        List<DeadStockResponseDto> results = analyticsService.detectDeadStock(90);
+
+        assertEquals(1, results.size());
+        assertTrue(results.get(0).getIsDeadStock());
+        assertNull(results.get(0).getLastSaleDate());
+    }
+
+    @Test
+    void detectDeadStock_doesNotFlagRecentlySoldProduct() {
+        Product product = new Product();
+        product.setId(1L); product.setSku("P1"); product.setName("Product 1");
+
+        Warehouse warehouse = new Warehouse();
+        warehouse.setId(1L); warehouse.setName("WH");
+
+        Inventory inv = new Inventory();
+        inv.setProduct(product); inv.setWarehouse(warehouse); inv.setQuantity(20);
+
+        SalesOrder recentOrder = new SalesOrder();
+        recentOrder.setStatus("SHIPPED");
+        recentOrder.setOrderDate(LocalDate.now().minusDays(10));
+        recentOrder.setItems(List.of(itemFor(product, 5)));
+
+        when(inventoryRepository.findAll()).thenReturn(List.of(inv));
+        when(salesOrderRepository.findAll()).thenReturn(List.of(recentOrder));
+
+        List<DeadStockResponseDto> results = analyticsService.detectDeadStock(90);
+
+        assertFalse(results.get(0).getIsDeadStock());
+        assertEquals(10, results.get(0).getDaysSinceLastSale());
+    }
+
+    @Test
+    void detectDeadStock_flagsProductWithOldLastSale_pastThreshold() {
+        Product product = new Product();
+        product.setId(1L); product.setSku("P1"); product.setName("Product 1");
+
+        Warehouse warehouse = new Warehouse();
+        warehouse.setId(1L); warehouse.setName("WH");
+
+        Inventory inv = new Inventory();
+        inv.setProduct(product); inv.setWarehouse(warehouse); inv.setQuantity(20);
+
+        SalesOrder oldOrder = new SalesOrder();
+        oldOrder.setStatus("SHIPPED");
+        oldOrder.setOrderDate(LocalDate.now().minusDays(120));
+        oldOrder.setItems(List.of(itemFor(product, 5)));
+
+        when(inventoryRepository.findAll()).thenReturn(List.of(inv));
+        when(salesOrderRepository.findAll()).thenReturn(List.of(oldOrder));
+
+        List<DeadStockResponseDto> results = analyticsService.detectDeadStock(90);
+
+        assertTrue(results.get(0).getIsDeadStock());
+        assertEquals(120, results.get(0).getDaysSinceLastSale());
+    }
+
+    @Test
+    void detectDeadStock_excludesProductsWithZeroTotalStock() {
+        Product product = new Product();
+        product.setId(1L); product.setSku("P1"); product.setName("Product 1");
+
+        Warehouse warehouse = new Warehouse();
+        warehouse.setId(1L); warehouse.setName("WH");
+
+        Inventory inv = new Inventory();
+        inv.setProduct(product); inv.setWarehouse(warehouse); inv.setQuantity(0);
+
+        when(inventoryRepository.findAll()).thenReturn(List.of(inv));
+        when(salesOrderRepository.findAll()).thenReturn(List.of());
+
+        List<DeadStockResponseDto> results = analyticsService.detectDeadStock(90);
+
+        assertTrue(results.isEmpty());
+    }
 }
