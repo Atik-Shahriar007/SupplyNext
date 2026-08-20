@@ -3,6 +3,7 @@ package com.example.scmbackend.analytics;
 import com.example.scmbackend.inventory.InventoryRepository;
 import com.example.scmbackend.product.Product;
 import com.example.scmbackend.product.ProductRepository;
+import com.example.scmbackend.purchaseorder.PurchaseOrderRepository;
 import com.example.scmbackend.salesorder.SalesOrder;
 import com.example.scmbackend.salesorder.SalesOrderItem;
 import com.example.scmbackend.salesorder.SalesOrderRepository;
@@ -15,6 +16,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.example.scmbackend.supplier.Supplier;
 import com.example.scmbackend.inventory.Inventory;
 import com.example.scmbackend.warehouse.Warehouse;
+import com.example.scmbackend.purchaseorder.PurchaseOrder;
+import com.example.scmbackend.supplier.SupplierRepository;
+import com.example.scmbackend.purchaseorder.PurchaseOrderRepository;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -33,6 +37,13 @@ class AnalyticsServiceTest {
 
     @Mock
     private InventoryRepository inventoryRepository;
+
+
+    @Mock
+    private SupplierRepository supplierRepository;
+
+    @Mock
+    private PurchaseOrderRepository purchaseOrderRepository;
 
     @InjectMocks
     private AnalyticsService analyticsService;
@@ -438,5 +449,84 @@ class AnalyticsServiceTest {
         List<DeadStockResponseDto> results = analyticsService.detectDeadStock(90);
 
         assertTrue(results.isEmpty());
+    }
+    @Test
+    void calculateSupplierAnalytics_returnsNoReceivedOrders_whenSupplierHasNoReceivedPOs() {
+        Supplier supplier = new Supplier();
+        supplier.setId(1L); supplier.setName("Supplier A"); supplier.setLeadTimeDays(5);
+
+        PurchaseOrder pendingPO = new PurchaseOrder();
+        pendingPO.setSupplier(supplier); pendingPO.setStatus("PENDING");
+        pendingPO.setOrderDate(LocalDate.of(2026, 1, 1));
+
+        when(supplierRepository.findAll()).thenReturn(List.of(supplier));
+        when(purchaseOrderRepository.findAll()).thenReturn(List.of(pendingPO));
+
+        List<SupplierAnalyticsResponseDto> results = analyticsService.calculateSupplierAnalytics();
+
+        assertEquals("NO_RECEIVED_ORDERS", results.get(0).getStatus());
+        assertEquals(1, results.get(0).getTotalPurchaseOrders());
+        assertEquals(1, results.get(0).getPendingPurchaseOrders());
+    }
+
+    @Test
+    void calculateSupplierAnalytics_returnsMissingLeadTime_whenSupplierHasNoStatedLeadTime() {
+        Supplier supplier = new Supplier();
+        supplier.setId(1L); supplier.setName("Supplier A"); // no leadTimeDays
+
+        PurchaseOrder receivedPO = new PurchaseOrder();
+        receivedPO.setSupplier(supplier); receivedPO.setStatus("RECEIVED");
+        receivedPO.setOrderDate(LocalDate.of(2026, 1, 1));
+        receivedPO.setReceivedDate(LocalDate.of(2026, 1, 6)); // 5 days
+
+        when(supplierRepository.findAll()).thenReturn(List.of(supplier));
+        when(purchaseOrderRepository.findAll()).thenReturn(List.of(receivedPO));
+
+        List<SupplierAnalyticsResponseDto> results = analyticsService.calculateSupplierAnalytics();
+
+        assertEquals("MISSING_LEAD_TIME", results.get(0).getStatus());
+        assertEquals(5.0, results.get(0).getAverageActualLeadTimeDays());
+        assertNull(results.get(0).getOnTimeDeliveryRate());
+    }
+
+    @Test
+    void calculateSupplierAnalytics_computesOnTimeRateCorrectly_givenMixedDeliveries() {
+        Supplier supplier = new Supplier();
+        supplier.setId(1L); supplier.setName("Supplier A"); supplier.setLeadTimeDays(5);
+
+        PurchaseOrder onTimePO = new PurchaseOrder();
+        onTimePO.setSupplier(supplier); onTimePO.setStatus("RECEIVED");
+        onTimePO.setOrderDate(LocalDate.of(2026, 1, 1));
+        onTimePO.setReceivedDate(LocalDate.of(2026, 1, 4)); // 3 days, on time
+
+        PurchaseOrder latePO = new PurchaseOrder();
+        latePO.setSupplier(supplier); latePO.setStatus("RECEIVED");
+        latePO.setOrderDate(LocalDate.of(2026, 1, 1));
+        latePO.setReceivedDate(LocalDate.of(2026, 1, 10)); // 9 days, late
+
+        when(supplierRepository.findAll()).thenReturn(List.of(supplier));
+        when(purchaseOrderRepository.findAll()).thenReturn(List.of(onTimePO, latePO));
+
+        List<SupplierAnalyticsResponseDto> results = analyticsService.calculateSupplierAnalytics();
+        SupplierAnalyticsResponseDto result = results.get(0);
+
+        assertEquals("OK", result.getStatus());
+        assertEquals(6.0, result.getAverageActualLeadTimeDays()); // (3+9)/2
+        assertEquals(50.0, result.getOnTimeDeliveryRate());       // 1 of 2 on time
+        assertEquals(50.0, result.getPerformanceScore());         // same as onTimeRate by design
+    }
+
+    @Test
+    void calculateSupplierAnalytics_handlesSupplierWithNoPurchaseOrdersAtAll() {
+        Supplier supplier = new Supplier();
+        supplier.setId(1L); supplier.setName("Supplier A");
+
+        when(supplierRepository.findAll()).thenReturn(List.of(supplier));
+        when(purchaseOrderRepository.findAll()).thenReturn(List.of());
+
+        List<SupplierAnalyticsResponseDto> results = analyticsService.calculateSupplierAnalytics();
+
+        assertEquals("NO_RECEIVED_ORDERS", results.get(0).getStatus());
+        assertEquals(0, results.get(0).getTotalPurchaseOrders());
     }
 }

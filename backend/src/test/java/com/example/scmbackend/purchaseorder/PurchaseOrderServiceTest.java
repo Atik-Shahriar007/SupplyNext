@@ -137,5 +137,6 @@ class PurchaseOrderServiceTest {
         PurchaseOrderResponseDto result = purchaseOrderService.receivePurchaseOrder(1L);
 
         assertEquals("RECEIVED", result.getStatus());
+        assertEquals(LocalDate.now(), result.getReceivedDate());
     }
 }

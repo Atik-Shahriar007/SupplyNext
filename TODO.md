@@ -137,3 +137,14 @@ frontend page, no recharts installation yet. This is a clean starting point.
   Safety Stock's mean daily demand + lead time, combined with per-warehouse
   Inventory quantities via GET /api/analytics/reorder-point[/{id}]).
   Frontend not yet built.
+
+- [x] Dead Stock Detection — backend complete and verified end-to-end
+  (GET /api/analytics/dead-stock?thresholdDays=90, products with zero
+  stock excluded rather than flagged, "never sold" vs "stale" distinguished).
+  Frontend not yet built.
+
+- [x] Supplier Analytics — backend complete and verified end-to-end.
+  Added PurchaseOrder.receivedDate (set automatically on /receive).
+  GET /api/analytics/supplier-performance computes average actual
+  lead time and on-time delivery rate (= performanceScore) per
+  supplier, from RECEIVED POs only. Frontend not yet built.

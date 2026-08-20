@@ -55,5 +55,9 @@ public class AnalyticsController {
             @RequestParam(defaultValue = "90") int thresholdDays) {
         return analyticsService.detectDeadStock(thresholdDays);
     }
+    @GetMapping("/supplier-performance")
+    public List<SupplierAnalyticsResponseDto> getSupplierAnalytics() {
+        return analyticsService.calculateSupplierAnalytics();
+    }
 }
 

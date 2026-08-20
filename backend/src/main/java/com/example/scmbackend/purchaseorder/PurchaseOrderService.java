@@ -92,7 +92,7 @@ public class PurchaseOrderService {
                 inventoryRepository.save(newInventory);
             }
         }
-
+        po.setReceivedDate(java.time.LocalDate.now());
         po.setStatus("RECEIVED");
         PurchaseOrder saved = purchaseOrderRepository.save(po);
         return toResponseDto(saved);
@@ -115,6 +115,7 @@ public class PurchaseOrderService {
                 po.getWarehouse().getId(),
                 po.getWarehouse().getName(),
                 po.getOrderDate(),
+                po.getReceivedDate(),
                 po.getStatus(),
                 itemDtos
         );

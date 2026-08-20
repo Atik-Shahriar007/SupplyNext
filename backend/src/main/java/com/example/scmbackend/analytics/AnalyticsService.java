@@ -9,6 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.example.scmbackend.inventory.Inventory;
 import com.example.scmbackend.inventory.InventoryRepository;
+import com.example.scmbackend.supplier.Supplier;
+import com.example.scmbackend.supplier.SupplierRepository;
+import com.example.scmbackend.purchaseorder.PurchaseOrder;
+import com.example.scmbackend.purchaseorder.PurchaseOrderRepository;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -32,6 +36,12 @@ public class AnalyticsService {
 
     @Autowired
     private InventoryRepository inventoryRepository;
+
+    @Autowired
+    private SupplierRepository supplierRepository;
+
+    @Autowired
+    private PurchaseOrderRepository purchaseOrderRepository;
 
     private static final double MIN_DAYS_FOR_RELIABLE_DEMAND = 30.0;
 
@@ -422,6 +432,52 @@ public class AnalyticsService {
             }
         }
         return lastSale;
+    }
+
+    //supplier order logic
+    public List<SupplierAnalyticsResponseDto> calculateSupplierAnalytics() {
+        List<Supplier> suppliers = supplierRepository.findAll();
+        List<PurchaseOrder> allPOs = purchaseOrderRepository.findAll();
+
+        Map<Long, List<PurchaseOrder>> posBySupplier = allPOs.stream()
+                .collect(Collectors.groupingBy(po -> po.getSupplier().getId()));
+
+        return suppliers.stream()
+                .map(s -> buildSupplierAnalytics(s, posBySupplier.getOrDefault(s.getId(), List.of())))
+                .collect(Collectors.toList());
+    }
+
+    private SupplierAnalyticsResponseDto buildSupplierAnalytics(Supplier supplier, List<PurchaseOrder> pos) {
+        int total = pos.size();
+        List<PurchaseOrder> received = pos.stream()
+                .filter(po -> "RECEIVED".equals(po.getStatus()) && po.getReceivedDate() != null)
+                .collect(Collectors.toList());
+        int receivedCount = received.size();
+        int pendingCount = total - receivedCount;
+
+        if (receivedCount == 0) {
+            return SupplierAnalyticsResponseDto.noReceivedOrders(supplier, total, pendingCount);
+        }
+
+        double avgActualLeadTime = received.stream()
+                .mapToLong(po -> ChronoUnit.DAYS.between(po.getOrderDate(), po.getReceivedDate()))
+                .average()
+                .orElse(0.0);
+
+        Integer statedLeadTime = supplier.getLeadTimeDays();
+
+        if (statedLeadTime == null) {
+            return SupplierAnalyticsResponseDto.missingLeadTime(supplier, total, receivedCount, pendingCount, avgActualLeadTime);
+        }
+
+        long onTimeCount = received.stream()
+                .filter(po -> ChronoUnit.DAYS.between(po.getOrderDate(), po.getReceivedDate()) <= statedLeadTime)
+                .count();
+
+        double onTimeRate = (onTimeCount * 100.0) / receivedCount;
+
+        return SupplierAnalyticsResponseDto.ok(supplier, total, receivedCount, pendingCount,
+                avgActualLeadTime, onTimeRate);
     }
 
 }

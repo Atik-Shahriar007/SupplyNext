@@ -32,6 +32,8 @@ public class PurchaseOrder {
 
     private LocalDate orderDate;
 
+    private LocalDate receivedDate; // set automatically when the PO is received, null until then
+
     private String status; // e.g. "PENDING", "RECEIVED"
 
     @OneToMany(mappedBy = "purchaseOrder", cascade = CascadeType.ALL, orphanRemoval = true)

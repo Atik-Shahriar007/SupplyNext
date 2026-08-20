@@ -17,6 +17,7 @@ public class PurchaseOrderResponseDto {
     private Long warehouseId;
     private String warehouseName;
     private LocalDate orderDate;
+    private LocalDate receivedDate;
     private String status;
     private List<PurchaseOrderItemDto> items;
 }
