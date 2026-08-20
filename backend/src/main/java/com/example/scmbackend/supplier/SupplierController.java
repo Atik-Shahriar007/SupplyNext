@@ -27,4 +27,8 @@ public class SupplierController {
     public SupplierResponseDto createSupplier(@Valid @RequestBody SupplierRequestDto dto) {
         return supplierService.createSupplier(dto);
     }
+    @PatchMapping("/{id}")
+    public SupplierResponseDto updateSupplier(@PathVariable Long id, @Valid @RequestBody SupplierRequestDto dto) {
+        return supplierService.updateSupplier(id, dto);
+    }
 }

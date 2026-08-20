@@ -21,4 +21,34 @@ public class AnalyticsController {
     public EOQResponseDto getEOQForProduct(@PathVariable Long productId) {
         return analyticsService.calculateEOQForProduct(productId);
     }
+
+    @GetMapping("/abc")
+    public List<ABCAnalysisResponseDto> getABCAnalysis() {
+        return analyticsService.calculateABCAnalysis();
+    }
+    @GetMapping("/safety-stock")
+    public List<SafetyStockResponseDto> getSafetyStock(
+            @RequestParam(defaultValue = "0.95") double serviceLevel) {
+        return analyticsService.calculateSafetyStock(serviceLevel);
+    }
+
+    @GetMapping("/safety-stock/{productId}")
+    public SafetyStockResponseDto getSafetyStockForProduct(
+            @PathVariable Long productId,
+            @RequestParam(defaultValue = "0.95") double serviceLevel) {
+        return analyticsService.calculateSafetyStockForProduct(productId, serviceLevel);
+    }
+    @GetMapping("/reorder-point")
+    public List<ReorderPointResponseDto> getReorderPoints(
+            @RequestParam(defaultValue = "0.95") double serviceLevel) {
+        return analyticsService.calculateReorderPoints(serviceLevel);
+    }
+
+    @GetMapping("/reorder-point/{productId}")
+    public ReorderPointResponseDto getReorderPointForProduct(
+            @PathVariable Long productId,
+            @RequestParam(defaultValue = "0.95") double serviceLevel) {
+        return analyticsService.calculateReorderPointForProduct(productId, serviceLevel);
+    }
 }
+

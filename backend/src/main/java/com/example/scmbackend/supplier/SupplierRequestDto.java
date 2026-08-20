@@ -2,6 +2,8 @@ package com.example.scmbackend.supplier;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,4 +20,8 @@ public class SupplierRequestDto {
     private String email;
 
     private String address;
+
+    @NotNull(message = "Lead time (days) is required")
+    @Positive(message = "Lead time must be greater than 0")
+    private Integer leadTimeDays;
 }

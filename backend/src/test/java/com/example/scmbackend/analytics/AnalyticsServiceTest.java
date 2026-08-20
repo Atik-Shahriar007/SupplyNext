@@ -1,5 +1,6 @@
 package com.example.scmbackend.analytics;
 
+import com.example.scmbackend.inventory.InventoryRepository;
 import com.example.scmbackend.product.Product;
 import com.example.scmbackend.product.ProductRepository;
 import com.example.scmbackend.salesorder.SalesOrder;
@@ -11,6 +12,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.example.scmbackend.supplier.Supplier;
+import com.example.scmbackend.inventory.Inventory;
+import com.example.scmbackend.warehouse.Warehouse;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -26,6 +30,9 @@ class AnalyticsServiceTest {
 
     @Mock
     private SalesOrderRepository salesOrderRepository;
+
+    @Mock
+    private InventoryRepository inventoryRepository;
 
     @InjectMocks
     private AnalyticsService analyticsService;
@@ -121,5 +128,225 @@ class AnalyticsServiceTest {
         EOQResponseDto result = analyticsService.calculateEOQForProduct(1L);
 
         assertEquals("INSUFFICIENT_DATA", result.getStatus());
+    }
+
+    @Test
+    void calculateABCAnalysis_classifiesProductsIntoTiers() {
+        Product productA = new Product();
+        productA.setId(1L); productA.setSku("A"); productA.setName("Product A"); productA.setUnitCost(7.0);
+
+        Product productB = new Product();
+        productB.setId(2L); productB.setSku("B"); productB.setName("Product B"); productB.setUnitCost(2.0);
+
+        Product productC = new Product();
+        productC.setId(3L); productC.setSku("C"); productC.setName("Product C"); productC.setUnitCost(1.0);
+
+        LocalDate d1 = LocalDate.of(2025, 1, 1);
+        LocalDate d2 = d1.plusDays(365); // exactly 1 year span -> annualDemand == totalQuantity
+
+        List<SalesOrder> orders = new java.util.ArrayList<>();
+        for (Product p : List.of(productA, productB, productC)) {
+            SalesOrder o1 = new SalesOrder();
+            o1.setStatus("SHIPPED"); o1.setOrderDate(d1);
+            o1.setItems(List.of(itemFor(p, 50)));
+
+            SalesOrder o2 = new SalesOrder();
+            o2.setStatus("SHIPPED"); o2.setOrderDate(d2);
+            o2.setItems(List.of(itemFor(p, 50)));
+
+            orders.add(o1);
+            orders.add(o2);
+        }
+        // demand = 100 for each -> values: A=700, B=200, C=100, total=1000
+        // cumulative: A=70% -> A tier, B=90% -> B tier, C=100% -> C tier
+
+        when(productRepository.findAll()).thenReturn(List.of(productA, productB, productC));
+        when(salesOrderRepository.findAll()).thenReturn(orders);
+
+        List<ABCAnalysisResponseDto> results = analyticsService.calculateABCAnalysis();
+        var byId = results.stream()
+                .collect(java.util.stream.Collectors.toMap(ABCAnalysisResponseDto::getProductId, r -> r));
+
+        assertEquals("A", byId.get(1L).getTier());
+        assertEquals("B", byId.get(2L).getTier());
+        assertEquals("C", byId.get(3L).getTier());
+    }
+
+    @Test
+    void calculateABCAnalysis_flagsMissingCostDataSeparately() {
+        Product noCostProduct = new Product();
+        noCostProduct.setId(9L); noCostProduct.setSku("X"); noCostProduct.setName("No Cost Product");
+        // unitCost left null deliberately
+
+        when(productRepository.findAll()).thenReturn(List.of(noCostProduct));
+        when(salesOrderRepository.findAll()).thenReturn(List.of());
+
+        List<ABCAnalysisResponseDto> results = analyticsService.calculateABCAnalysis();
+
+        assertEquals(1, results.size());
+        assertEquals("MISSING_COST_DATA", results.get(0).getStatus());
+        assertNull(results.get(0).getTier());
+    }
+
+    @Test
+    void calculateABCAnalysis_handlesZeroTotalValueWithoutDivideByZero() {
+        Product p = new Product();
+        p.setId(1L); p.setSku("Z"); p.setName("Zero Demand"); p.setUnitCost(10.0);
+
+        when(productRepository.findAll()).thenReturn(List.of(p));
+        when(salesOrderRepository.findAll()).thenReturn(List.of());
+
+        List<ABCAnalysisResponseDto> results = analyticsService.calculateABCAnalysis();
+
+        assertEquals("OK", results.get(0).getStatus());
+        assertEquals(0.0, results.get(0).getAnnualConsumptionValue());
+        assertEquals("C", results.get(0).getTier());
+    }
+    @Test
+    void calculateSafetyStock_returnsMissingLeadTime_whenSupplierLeadTimeIsNull() {
+        Supplier supplier = new Supplier();
+        supplier.setId(1L); supplier.setName("Supplier A"); // leadTimeDays left null
+
+        Product product = new Product();
+        product.setId(1L); product.setSku("P1"); product.setName("Product 1"); product.setSupplier(supplier);
+
+        when(productRepository.findById(1L)).thenReturn(java.util.Optional.of(product));
+        when(salesOrderRepository.findAll()).thenReturn(List.of());
+
+        SafetyStockResponseDto result = analyticsService.calculateSafetyStockForProduct(1L, 0.95);
+
+        assertEquals("MISSING_LEAD_TIME", result.getStatus());
+        assertNull(result.getSafetyStock());
+    }
+
+    @Test
+    void calculateSafetyStock_returnsInsufficientData_whenDemandSpansLessThanTwoDays() {
+        Supplier supplier = new Supplier();
+        supplier.setId(1L); supplier.setName("Supplier A"); supplier.setLeadTimeDays(9);
+
+        Product product = new Product();
+        product.setId(1L); product.setSku("P1"); product.setName("Product 1"); product.setSupplier(supplier);
+
+        SalesOrder order = new SalesOrder();
+        order.setStatus("SHIPPED"); order.setOrderDate(LocalDate.of(2026, 1, 1));
+        order.setItems(List.of(itemFor(product, 10)));
+
+        when(productRepository.findById(1L)).thenReturn(java.util.Optional.of(product));
+        when(salesOrderRepository.findAll()).thenReturn(List.of(order));
+
+        SafetyStockResponseDto result = analyticsService.calculateSafetyStockForProduct(1L, 0.95);
+
+        assertEquals("INSUFFICIENT_DATA", result.getStatus());
+    }
+
+    @Test
+    void calculateSafetyStock_computesExpectedValue_givenKnownDailyDemandVariation() {
+        Supplier supplier = new Supplier();
+        supplier.setId(1L); supplier.setName("Supplier A"); supplier.setLeadTimeDays(9);
+
+        Product product = new Product();
+        product.setId(1L); product.setSku("P1"); product.setName("Product 1"); product.setSupplier(supplier);
+
+        LocalDate base = LocalDate.of(2026, 1, 1);
+        int[] quantities = {10, 20, 10, 20};
+        List<SalesOrder> orders = new java.util.ArrayList<>();
+        for (int i = 0; i < quantities.length; i++) {
+            SalesOrder o = new SalesOrder();
+            o.setStatus("SHIPPED");
+            o.setOrderDate(base.plusDays(i));
+            o.setItems(List.of(itemFor(product, quantities[i])));
+            orders.add(o);
+        }
+
+        when(productRepository.findById(1L)).thenReturn(java.util.Optional.of(product));
+        when(salesOrderRepository.findAll()).thenReturn(orders);
+
+        SafetyStockResponseDto result = analyticsService.calculateSafetyStockForProduct(1L, 0.95);
+
+        assertEquals("OK", result.getStatus());
+        assertEquals(15.0, result.getMeanDailyDemand(), 0.01);
+        assertEquals(5.77, result.getStdDevDailyDemand(), 0.05);
+        // Z(1.645) * stdDev(5.7735) * sqrt(leadTime=9=>3) ≈ 28.5
+        assertEquals(28.5, result.getSafetyStock(), 0.5);
+    }
+
+    @Test
+    void calculateSafetyStock_throwsException_forUnsupportedServiceLevel() {
+        assertThrows(RuntimeException.class, () ->
+                analyticsService.calculateSafetyStockForProduct(1L, 0.5));
+    }
+
+    @Test
+    void calculateReorderPoint_computesExpectedValue_andFlagsWarehousesBelowThreshold() {
+        Supplier supplier = new Supplier();
+        supplier.setId(1L); supplier.setName("Supplier A"); supplier.setLeadTimeDays(9);
+
+        Product product = new Product();
+        product.setId(1L); product.setSku("P1"); product.setName("Product 1"); product.setSupplier(supplier);
+
+        LocalDate base = LocalDate.of(2026, 1, 1);
+        int[] quantities = {10, 20, 10, 20};
+        List<SalesOrder> orders = new java.util.ArrayList<>();
+        for (int i = 0; i < quantities.length; i++) {
+            SalesOrder o = new SalesOrder();
+            o.setStatus("SHIPPED");
+            o.setOrderDate(base.plusDays(i));
+            o.setItems(List.of(itemFor(product, quantities[i])));
+            orders.add(o);
+        }
+
+        Warehouse lowStockWarehouse = new Warehouse();
+        lowStockWarehouse.setId(1L); lowStockWarehouse.setName("Low Stock WH");
+
+        Warehouse highStockWarehouse = new Warehouse();
+        highStockWarehouse.setId(2L); highStockWarehouse.setName("High Stock WH");
+
+        Inventory lowInv = new Inventory();
+        lowInv.setProduct(product); lowInv.setWarehouse(lowStockWarehouse); lowInv.setQuantity(100);
+
+        Inventory highInv = new Inventory();
+        highInv.setProduct(product); highInv.setWarehouse(highStockWarehouse); highInv.setQuantity(200);
+
+        when(productRepository.findById(1L)).thenReturn(java.util.Optional.of(product));
+        when(salesOrderRepository.findAll()).thenReturn(orders);
+        when(inventoryRepository.findAll()).thenReturn(List.of(lowInv, highInv));
+
+        ReorderPointResponseDto result = analyticsService.calculateReorderPointForProduct(1L, 0.95);
+
+        assertEquals("OK", result.getStatus());
+        // meanDailyDemand=15, leadTime=9 -> 135, + safetyStock≈28.5 -> ≈163.5
+        assertEquals(163.5, result.getReorderPoint(), 1.0);
+
+        var byWarehouse = result.getWarehouseStock().stream()
+                .collect(java.util.stream.Collectors.toMap(WarehouseStockDto::getWarehouseId, w -> w));
+
+        assertTrue(byWarehouse.get(1L).getBelowReorderPoint());  // 100 <= ~163.5
+        assertFalse(byWarehouse.get(2L).getBelowReorderPoint()); // 200 > ~163.5
+    }
+
+    @Test
+    void calculateReorderPoint_leavesWarehouseFlagsNull_whenReorderPointNotComputable() {
+        Supplier supplier = new Supplier();
+        supplier.setId(1L); supplier.setName("Supplier A"); // no leadTimeDays
+
+        Product product = new Product();
+        product.setId(1L); product.setSku("P1"); product.setName("Product 1"); product.setSupplier(supplier);
+
+        Warehouse warehouse = new Warehouse();
+        warehouse.setId(1L); warehouse.setName("WH");
+
+        Inventory inv = new Inventory();
+        inv.setProduct(product); inv.setWarehouse(warehouse); inv.setQuantity(50);
+
+        when(productRepository.findById(1L)).thenReturn(java.util.Optional.of(product));
+        when(salesOrderRepository.findAll()).thenReturn(List.of());
+        when(inventoryRepository.findAll()).thenReturn(List.of(inv));
+
+        ReorderPointResponseDto result = analyticsService.calculateReorderPointForProduct(1L, 0.95);
+
+        assertEquals("MISSING_LEAD_TIME", result.getStatus());
+        assertNull(result.getReorderPoint());
+        assertNull(result.getWarehouseStock().get(0).getBelowReorderPoint());
+        assertEquals(50, result.getWarehouseStock().get(0).getCurrentQuantity());
     }
 }

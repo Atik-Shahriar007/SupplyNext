@@ -14,4 +14,5 @@ public class SupplierResponseDto {
     private String phone;
     private String email;
     private String address;
+    private Integer leadTimeDays;
 }

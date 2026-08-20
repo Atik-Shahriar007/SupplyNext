@@ -127,3 +127,13 @@ frontend page, no recharts installation yet. This is a clean starting point.
 - [x] EOQ (Economic Order Quantity) — backend complete and verified end-to-end
   (Product cost fields, PATCH /api/products/{id}, AnalyticsService,
   GET /api/analytics/eoq[/{id}]). Frontend not yet built.
+
+- [x] Safety Stock — backend complete and verified end-to-end (Supplier
+  leadTimeDays field, PATCH /api/suppliers/{id}, statistical formula
+  Z × stdDev(daily demand) × √leadTime, GET /api/analytics/safety-stock[/{id}]).
+  Frontend not yet built.
+
+- [x] Reorder Point — backend complete and verified end-to-end (reuses
+  Safety Stock's mean daily demand + lead time, combined with per-warehouse
+  Inventory quantities via GET /api/analytics/reorder-point[/{id}]).
+  Frontend not yet built.

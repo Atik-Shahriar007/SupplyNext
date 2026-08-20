@@ -7,6 +7,8 @@ import com.example.scmbackend.salesorder.SalesOrderItem;
 import com.example.scmbackend.salesorder.SalesOrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.example.scmbackend.inventory.Inventory;
+import com.example.scmbackend.inventory.InventoryRepository;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -14,6 +16,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.Arrays;
+import java.util.Collections;
+
 
 @Service
 public class AnalyticsService {
@@ -23,6 +28,9 @@ public class AnalyticsService {
 
     @Autowired
     private SalesOrderRepository salesOrderRepository;
+
+    @Autowired
+    private InventoryRepository inventoryRepository;
 
     private static final double MIN_DAYS_FOR_RELIABLE_DEMAND = 30.0;
 
@@ -69,10 +77,84 @@ public class AnalyticsService {
         return EOQResponseDto.ok(product, annualDemand, holdingCostPerUnit, eoq, note);
     }
 
-    private Map<Long, DemandStats> computeDemandStats() {
-        List<SalesOrder> shippedOrders = salesOrderRepository.findAll().stream()
+
+    public List<ABCAnalysisResponseDto> calculateABCAnalysis() {
+        List<Product> products = productRepository.findAll();
+        Map<Long, DemandStats> demandByProduct = computeDemandStats();
+
+        List<ABCAnalysisResponseDto> missingCostResults = new java.util.ArrayList<>();
+        List<ProductValue> valued = new java.util.ArrayList<>();
+
+        for (Product p : products) {
+            if (p.getUnitCost() == null) {
+                missingCostResults.add(ABCAnalysisResponseDto.missingCostData(p));
+                continue;
+            }
+
+            DemandStats stats = demandByProduct.get(p.getId());
+            double annualDemand = (stats == null || stats.totalQuantity <= 0)
+                    ? 0.0
+                    : stats.totalQuantity * (365.0 / stats.daysSpan());
+
+            double value = annualDemand * p.getUnitCost();
+            valued.add(new ProductValue(p, annualDemand, value));
+        }
+
+        valued.sort((a, b) -> Double.compare(b.value, a.value));
+
+        double totalValue = valued.stream().mapToDouble(v -> v.value).sum();
+
+        List<ABCAnalysisResponseDto> results = new java.util.ArrayList<>();
+        double cumulativeValue = 0.0;
+
+        for (ProductValue pv : valued) {
+            cumulativeValue += pv.value;
+            double percentOfTotal = totalValue > 0 ? (pv.value / totalValue) * 100.0 : 0.0;
+            double cumulativePercent = totalValue > 0 ? (cumulativeValue / totalValue) * 100.0 : 0.0;
+
+            String tier;
+            if (totalValue <= 0) {
+                tier = "C";
+            } else if (cumulativePercent <= 80.0) {
+                tier = "A";
+            } else if (cumulativePercent <= 95.0) {
+                tier = "B";
+            } else {
+                tier = "C";
+            }
+
+            results.add(ABCAnalysisResponseDto.ok(pv.product, pv.annualDemand, pv.value,
+                    percentOfTotal, cumulativePercent, tier));
+        }
+
+        results.addAll(missingCostResults);
+        return results;
+    }
+
+    private static class ProductValue {
+        Product product;
+        double annualDemand;
+        double value;
+
+        ProductValue(Product product, double annualDemand, double value) {
+            this.product = product;
+            this.annualDemand = annualDemand;
+            this.value = value;
+        }
+    }
+
+
+    // --- Shared helper ---
+    private List<SalesOrder> getShippedSalesOrders() {
+        return salesOrderRepository.findAll().stream()
                 .filter(so -> "SHIPPED".equals(so.getStatus()))
                 .collect(Collectors.toList());
+    }
+
+
+
+    private Map<Long, DemandStats> computeDemandStats() {
+        List<SalesOrder> shippedOrders = getShippedSalesOrders();
 
         Map<Long, DemandStats> stats = new HashMap<>();
 
@@ -99,4 +181,179 @@ public class AnalyticsService {
             return Math.max(days, 1.0);
         }
     }
+
+    // --- Safety Stock methods
+    private static final Map<Double, Double> Z_SCORES = Map.of(
+            0.90, 1.28,
+            0.95, 1.645,
+            0.975, 1.96,
+            0.99, 2.33,
+            0.999, 3.09
+    );
+
+    public List<SafetyStockResponseDto> calculateSafetyStock(double serviceLevel) {
+        double z = zScoreFor(serviceLevel);
+        List<Product> products = productRepository.findAll();
+        Map<Long, DailyDemandStats> demandStats = computeDailyDemandStats();
+
+        return products.stream()
+                .map(p -> buildSafetyStockResponse(p, demandStats.get(p.getId()), serviceLevel, z))
+                .collect(Collectors.toList());
+    }
+
+    public SafetyStockResponseDto calculateSafetyStockForProduct(Long productId, double serviceLevel) {
+        double z = zScoreFor(serviceLevel);
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
+        DailyDemandStats stats = computeDailyDemandStats().get(productId);
+        return buildSafetyStockResponse(product, stats, serviceLevel, z);
+    }
+
+    private double zScoreFor(double serviceLevel) {
+        Double z = Z_SCORES.get(serviceLevel);
+        if (z == null) {
+            throw new RuntimeException("Unsupported service level: " + serviceLevel +
+                    ". Supported values: " + Z_SCORES.keySet());
+        }
+        return z;
+    }
+
+    private SafetyStockResponseDto buildSafetyStockResponse(Product product, DailyDemandStats stats,
+                                                            double serviceLevel, double z) {
+        Integer leadTimeDays = product.getSupplier().getLeadTimeDays();
+
+        if (leadTimeDays == null) {
+            return SafetyStockResponseDto.missingLeadTime(product, serviceLevel, z);
+        }
+
+        if (stats == null || !stats.sufficient) {
+            return SafetyStockResponseDto.insufficientData(product, serviceLevel, z, leadTimeDays);
+        }
+
+        double safetyStock = z * stats.stdDevDailyDemand * Math.sqrt(leadTimeDays);
+
+        String note = stats.spanDays < 30
+                ? "Based on limited sales history (" + stats.spanDays + " days) — treat as a rough estimate."
+                : null;
+
+        return SafetyStockResponseDto.ok(product, serviceLevel, z, leadTimeDays,
+                stats.meanDailyDemand, stats.stdDevDailyDemand, safetyStock, note);
+    }
+
+    private Map<Long, DailyDemandStats> computeDailyDemandStats() {
+        List<SalesOrder> shippedOrders = getShippedSalesOrders();
+
+        Map<Long, Map<LocalDate, Long>> dailyQtyByProduct = new HashMap<>();
+
+        for (SalesOrder so : shippedOrders) {
+            LocalDate date = so.getOrderDate();
+            for (SalesOrderItem item : so.getItems()) {
+                Long productId = item.getProduct().getId();
+                dailyQtyByProduct
+                        .computeIfAbsent(productId, k -> new HashMap<>())
+                        .merge(date, (long) item.getQuantity(), Long::sum);
+            }
+        }
+
+        Map<Long, DailyDemandStats> result = new HashMap<>();
+        for (Map.Entry<Long, Map<LocalDate, Long>> entry : dailyQtyByProduct.entrySet()) {
+            Map<LocalDate, Long> byDate = entry.getValue();
+            LocalDate min = Collections.min(byDate.keySet());
+            LocalDate max = Collections.max(byDate.keySet());
+            long spanDays = ChronoUnit.DAYS.between(min, max) + 1;
+
+            if (spanDays < 2) {
+                result.put(entry.getKey(), DailyDemandStats.insufficient());
+                continue;
+            }
+
+            double[] series = new double[(int) spanDays];
+            LocalDate cursor = min;
+            int i = 0;
+            while (!cursor.isAfter(max)) {
+                series[i++] = byDate.getOrDefault(cursor, 0L);
+                cursor = cursor.plusDays(1);
+            }
+
+            double mean = Arrays.stream(series).average().orElse(0.0);
+            double sumSqDiff = Arrays.stream(series).map(v -> (v - mean) * (v - mean)).sum();
+            double sampleVariance = sumSqDiff / (series.length - 1);
+            double stdDev = Math.sqrt(sampleVariance);
+
+            result.put(entry.getKey(), new DailyDemandStats(mean, stdDev, true, (int) spanDays));
+        }
+
+        return result;
+    }
+
+    private static class DailyDemandStats {
+        double meanDailyDemand;
+        double stdDevDailyDemand;
+        boolean sufficient;
+        int spanDays;
+
+        DailyDemandStats(double mean, double stdDev, boolean sufficient, int spanDays) {
+            this.meanDailyDemand = mean;
+            this.stdDevDailyDemand = stdDev;
+            this.sufficient = sufficient;
+            this.spanDays = spanDays;
+        }
+
+        static DailyDemandStats insufficient() {
+            return new DailyDemandStats(0, 0, false, 0);
+        }
+    }
+
+    //re-order method
+    public List<ReorderPointResponseDto> calculateReorderPoints(double serviceLevel) {
+        double z = zScoreFor(serviceLevel);
+        List<Product> products = productRepository.findAll();
+        Map<Long, DailyDemandStats> demandStats = computeDailyDemandStats();
+        List<Inventory> allInventory = inventoryRepository.findAll();
+
+        return products.stream()
+                .map(p -> buildReorderPointResponse(p, demandStats.get(p.getId()), serviceLevel, z, allInventory))
+                .collect(Collectors.toList());
+    }
+
+    public ReorderPointResponseDto calculateReorderPointForProduct(Long productId, double serviceLevel) {
+        double z = zScoreFor(serviceLevel);
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
+        DailyDemandStats stats = computeDailyDemandStats().get(productId);
+        List<Inventory> allInventory = inventoryRepository.findAll();
+        return buildReorderPointResponse(product, stats, serviceLevel, z, allInventory);
+    }
+
+    private ReorderPointResponseDto buildReorderPointResponse(Product product, DailyDemandStats stats,
+                                                              double serviceLevel, double z,
+                                                              List<Inventory> allInventory) {
+        SafetyStockResponseDto ss = buildSafetyStockResponse(product, stats, serviceLevel, z);
+
+        Double reorderPoint = "OK".equals(ss.getStatus())
+                ? ss.getMeanDailyDemand() * ss.getLeadTimeDays() + ss.getSafetyStock()
+                : null;
+
+        List<WarehouseStockDto> warehouseStocks = allInventory.stream()
+                .filter(inv -> inv.getProduct().getId().equals(product.getId()))
+                .map(inv -> new WarehouseStockDto(
+                        inv.getWarehouse().getId(),
+                        inv.getWarehouse().getName(),
+                        inv.getQuantity(),
+                        reorderPoint != null ? inv.getQuantity() <= reorderPoint : null
+                ))
+                .collect(Collectors.toList());
+
+        return new ReorderPointResponseDto(
+                product.getId(), product.getSku(), product.getName(),
+                ss.getStatus(), ss.getNote(), ss.getLeadTimeDays(), ss.getMeanDailyDemand(),
+                ss.getSafetyStock(), reorderPoint != null ? round2(reorderPoint) : null,
+                warehouseStocks
+        );
+    }
+
+    private static Double round2(double val) {
+        return Math.round(val * 100.0) / 100.0;
+    }
+
 }

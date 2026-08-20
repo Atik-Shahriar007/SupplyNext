@@ -32,4 +32,5 @@ public class Supplier {
     private String email;
 
     private String address;
+    private Integer leadTimeDays; // days between placing a PO and receiving it
 }

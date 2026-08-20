@@ -5,9 +5,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 @Service
 public class SupplierService {
 
@@ -20,14 +17,29 @@ public class SupplierService {
 
     public SupplierResponseDto createSupplier(SupplierRequestDto dto) {
         Supplier supplier = new Supplier();
+        applyDto(supplier, dto);
+
+        Supplier saved = supplierRepository.save(supplier);
+        return toResponseDto(saved);
+    }
+
+    public SupplierResponseDto updateSupplier(Long id, SupplierRequestDto dto) {
+        Supplier supplier = supplierRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Supplier not found: " + id));
+
+        applyDto(supplier, dto);
+
+        Supplier saved = supplierRepository.save(supplier);
+        return toResponseDto(saved);
+    }
+
+    private void applyDto(Supplier supplier, SupplierRequestDto dto) {
         supplier.setName(dto.getName());
         supplier.setContactPerson(dto.getContactPerson());
         supplier.setPhone(dto.getPhone());
         supplier.setEmail(dto.getEmail());
         supplier.setAddress(dto.getAddress());
-
-        Supplier saved = supplierRepository.save(supplier);
-        return toResponseDto(saved);
+        supplier.setLeadTimeDays(dto.getLeadTimeDays());
     }
 
     private SupplierResponseDto toResponseDto(Supplier supplier) {
@@ -37,7 +49,8 @@ public class SupplierService {
                 supplier.getContactPerson(),
                 supplier.getPhone(),
                 supplier.getEmail(),
-                supplier.getAddress()
+                supplier.getAddress(),
+                supplier.getLeadTimeDays()
         );
     }
 }
