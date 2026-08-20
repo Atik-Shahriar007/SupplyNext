@@ -148,3 +148,21 @@ frontend page, no recharts installation yet. This is a clean starting point.
   GET /api/analytics/supplier-performance computes average actual
   lead time and on-time delivery rate (= performanceScore) per
   supplier, from RECEIVED POs only. Frontend not yet built.
+
+- [x] KPI Dashboard expansion — backend complete and verified (needs Postman
+  check still). Refactored Dashboard from controller-only logic + raw
+  Map<String,Object> (violated the project's own layering convention)
+  into proper DashboardService + DashboardSummaryResponseDto. Added
+  pendingTransfers, totalProducts, totalWarehouses, totalSuppliers,
+  deadStockItemsCount, averageSupplierOnTimeRate. lowStockItems changed
+  from raw Inventory entities to flattened LowStockItemDto — confirmed
+  non-breaking against current dashboard/page.tsx (only reads the count,
+  not the array). 5 new tests (first-ever coverage for this module).
+
+- [x] Bug fix: SupplierAnalyticsResponseDto miscounted legacy RECEIVED POs
+  (from before receivedDate existed) as "pending" instead of excluding
+  them. Fixed by adding receivedWithoutDateCount to distinguish "truly
+  pending" from "received but untracked for performance." Caught via
+  cross-checking supplier-performance against dashboard summary —
+  worth remembering this kind of cross-KPI consistency check for future
+  analytics work, not just isolated endpoint testing.

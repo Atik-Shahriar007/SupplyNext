@@ -449,14 +449,22 @@ public class AnalyticsService {
 
     private SupplierAnalyticsResponseDto buildSupplierAnalytics(Supplier supplier, List<PurchaseOrder> pos) {
         int total = pos.size();
+
         List<PurchaseOrder> received = pos.stream()
                 .filter(po -> "RECEIVED".equals(po.getStatus()) && po.getReceivedDate() != null)
                 .collect(Collectors.toList());
         int receivedCount = received.size();
-        int pendingCount = total - receivedCount;
+
+        int pendingCount = (int) pos.stream()
+                .filter(po -> "PENDING".equals(po.getStatus()))
+                .count();
+
+        int receivedWithoutDateCount = (int) pos.stream()
+                .filter(po -> "RECEIVED".equals(po.getStatus()) && po.getReceivedDate() == null)
+                .count();
 
         if (receivedCount == 0) {
-            return SupplierAnalyticsResponseDto.noReceivedOrders(supplier, total, pendingCount);
+            return SupplierAnalyticsResponseDto.noReceivedOrders(supplier, total, pendingCount, receivedWithoutDateCount);
         }
 
         double avgActualLeadTime = received.stream()
@@ -467,7 +475,8 @@ public class AnalyticsService {
         Integer statedLeadTime = supplier.getLeadTimeDays();
 
         if (statedLeadTime == null) {
-            return SupplierAnalyticsResponseDto.missingLeadTime(supplier, total, receivedCount, pendingCount, avgActualLeadTime);
+            return SupplierAnalyticsResponseDto.missingLeadTime(supplier, total, receivedCount, pendingCount,
+                    receivedWithoutDateCount, avgActualLeadTime);
         }
 
         long onTimeCount = received.stream()
@@ -477,7 +486,7 @@ public class AnalyticsService {
         double onTimeRate = (onTimeCount * 100.0) / receivedCount;
 
         return SupplierAnalyticsResponseDto.ok(supplier, total, receivedCount, pendingCount,
-                avgActualLeadTime, onTimeRate);
+                receivedWithoutDateCount, avgActualLeadTime, onTimeRate);
     }
 
 }
