@@ -112,3 +112,18 @@ frontend page, no recharts installation yet. This is a clean starting point.
 - Don't reshuffle the Phase B feature order without discussing — the sequence
   was deliberately chosen (see reasoning in PROJECT_CONTEXT.md's roadmap
   section).
+
+
+- [ ] **PATCH /api/products/{id} role enforcement — unverified, not confirmed broken.**
+  Testing with a STAFF token returned 401 Unauthorized instead of the expected
+  403 Forbidden. GET with the same STAFF token succeeded (200), which rules out
+  an invalid/expired token as the cause — the 401 was specific to the PATCH
+  request. Suspected Postman-side issue (Authorization tab vs Headers tab
+  conflict) rather than a real SecurityConfig bug, since the PATCH pattern
+  matches the already-working PurchaseOrder/Transfer/Inventory PATCH rules
+  exactly. NOT YET CONFIRMED. Revisit before relying on this restriction in
+  anything security-sensitive.
+
+- [x] EOQ (Economic Order Quantity) — backend complete and verified end-to-end
+  (Product cost fields, PATCH /api/products/{id}, AnalyticsService,
+  GET /api/analytics/eoq[/{id}]). Frontend not yet built.

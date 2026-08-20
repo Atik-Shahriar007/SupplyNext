@@ -32,6 +32,12 @@ public class Product {
     @Positive(message = "Price must be greater than 0")
     private Double price;
 
+    // --- New: EOQ cost inputs ---
+    private Double unitCost;        // cost to acquire/produce ONE unit (not sale price)
+    private Double holdingCostRate; // annual holding cost as a fraction of unitCost, e.g. 0.2 = 20%/year
+    private Double orderingCost;    // fixed cost incurred each time a PO is placed for this product
+
+
     @ManyToOne
     @JoinColumn(name = "category_id")
     private Category category;

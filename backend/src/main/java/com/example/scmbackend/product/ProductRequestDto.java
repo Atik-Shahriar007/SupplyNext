@@ -21,6 +21,18 @@ public class ProductRequestDto {
     @Positive(message = "Price must be greater than 0")
     private Double price;
 
+    @NotNull(message = "Unit cost is required")
+    @Positive(message = "Unit cost must be greater than 0")
+    private Double unitCost;
+
+    @NotNull(message = "Holding cost rate is required")
+    @Positive(message = "Holding cost rate must be greater than 0")
+    private Double holdingCostRate;
+
+    @NotNull(message = "Ordering cost is required")
+    @Positive(message = "Ordering cost must be greater than 0")
+    private Double orderingCost;
+
     @NotNull(message = "Category ID is required")
     private Long categoryId;
 

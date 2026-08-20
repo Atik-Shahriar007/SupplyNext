@@ -27,4 +27,9 @@ public class ProductController {
     public ProductResponseDto createProduct(@Valid @RequestBody ProductRequestDto dto) {
         return productService.createProduct(dto);
     }
+
+    @PatchMapping("/{id}")
+    public ProductResponseDto updateProduct(@PathVariable Long id, @Valid @RequestBody ProductRequestDto dto) {
+        return productService.updateProduct(id, dto);
+    }
 }
