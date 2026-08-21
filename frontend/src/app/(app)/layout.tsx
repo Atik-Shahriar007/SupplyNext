@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
+  BarChart3,
   Warehouse,
   Package,
   Tags,
@@ -19,6 +20,7 @@ import {
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/warehouses", label: "Warehouses", icon: Warehouse },
   { href: "/inventory", label: "Inventory", icon: Boxes },
   { href: "/products", label: "Products", icon: Package },
