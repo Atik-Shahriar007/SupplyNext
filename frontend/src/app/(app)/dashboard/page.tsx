@@ -8,9 +8,47 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 interface DashboardSummary {
   totalInventoryValue: number;
   totalStockUnits: number;
+  lowStockThreshold: number;
   lowStockItemsCount: number;
   pendingPurchaseOrders: number;
   pendingSalesOrders: number;
+  pendingTransfers: number;
+  totalProducts: number;
+  totalWarehouses: number;
+  totalSuppliers: number;
+  deadStockItemsCount: number;
+  averageSupplierOnTimeRate: number | null;
+}
+
+function StatCard({
+  label,
+  value,
+  emphasis,
+}: {
+  label: string;
+  value: string | number;
+  emphasis?: "warning" | "default";
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {label}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p
+          className={
+            emphasis === "warning"
+              ? "text-2xl font-bold text-red-500"
+              : "text-2xl font-bold"
+          }
+        >
+          {value}
+        </p>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function DashboardPage() {
@@ -36,61 +74,51 @@ export default function DashboardPage() {
       {loadingData ? (
         <p>Loading dashboard data...</p>
       ) : summary ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Inventory Value
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">${summary.totalInventoryValue.toFixed(2)}</p>
-            </CardContent>
-          </Card>
+        <div className="space-y-6">
+          <div>
+            <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
+              Inventory & Orders
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <StatCard
+                label="Total Inventory Value"
+                value={`$${summary.totalInventoryValue.toFixed(2)}`}
+              />
+              <StatCard label="Total Stock Units" value={summary.totalStockUnits} />
+              <StatCard
+                label={`Low Stock Items (< ${summary.lowStockThreshold})`}
+                value={summary.lowStockItemsCount}
+                emphasis={summary.lowStockItemsCount > 0 ? "warning" : "default"}
+              />
+              <StatCard label="Pending Purchase Orders" value={summary.pendingPurchaseOrders} />
+              <StatCard label="Pending Sales Orders" value={summary.pendingSalesOrders} />
+              <StatCard label="Pending Transfers" value={summary.pendingTransfers} />
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Stock Units
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{summary.totalStockUnits}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Low Stock Items
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-red-500">{summary.lowStockItemsCount}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Pending Purchase Orders
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{summary.pendingPurchaseOrders}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Pending Sales Orders
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{summary.pendingSalesOrders}</p>
-            </CardContent>
-          </Card>
+          <div>
+            <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
+              Catalog & Supplier Health
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <StatCard label="Total Products" value={summary.totalProducts} />
+              <StatCard label="Total Warehouses" value={summary.totalWarehouses} />
+              <StatCard label="Total Suppliers" value={summary.totalSuppliers} />
+              <StatCard
+                label="Dead Stock Items"
+                value={summary.deadStockItemsCount}
+                emphasis={summary.deadStockItemsCount > 0 ? "warning" : "default"}
+              />
+              <StatCard
+                label="Avg. Supplier On-Time Rate"
+                value={
+                  summary.averageSupplierOnTimeRate != null
+                    ? `${summary.averageSupplierOnTimeRate.toFixed(1)}%`
+                    : "No data yet"
+                }
+              />
+            </div>
+          </div>
         </div>
       ) : (
         <p className="text-red-500">Failed to load dashboard data.</p>
