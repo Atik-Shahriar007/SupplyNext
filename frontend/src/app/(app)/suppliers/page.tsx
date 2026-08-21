@@ -14,6 +14,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 
 const supplierSchema = z.object({
@@ -22,7 +29,21 @@ const supplierSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email("Must be a valid email").optional().or(z.literal("")),
   address: z.string().optional(),
+  leadTimeDays: z.coerce
+    .number()
+    .positive("Lead time must be greater than 0"),
 });
+
+type SupplierFormValues = z.infer<typeof supplierSchema>;
+
+const emptyDefaults: SupplierFormValues = {
+  name: "",
+  contactPerson: "",
+  phone: "",
+  email: "",
+  address: "",
+  leadTimeDays: undefined as unknown as number,
+};
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -31,21 +52,28 @@ export default function SuppliersPage() {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [editError, setEditError] = useState("");
+
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: zodResolver(supplierSchema),
-    defaultValues: {
-      name: "",
-      contactPerson: "",
-      phone: "",
-      email: "",
-      address: "",
-    },
-  });
+} = useForm({
+  resolver: zodResolver(supplierSchema),
+  defaultValues: emptyDefaults,
+});
+
+  const {
+    register: registerEdit,
+    handleSubmit: handleEditSubmit,
+    reset: resetEdit,
+    formState: { errors: editErrors, isSubmitting: isEditSubmitting },
+} = useForm({
+  resolver: zodResolver(supplierSchema),
+  defaultValues: emptyDefaults,
+});
 
   function loadSuppliers() {
     setLoading(true);
@@ -63,22 +91,41 @@ export default function SuppliersPage() {
     loadSuppliers();
   }, [page]);
 
-  async function onSubmit(data: any) {
+  async function onSubmit(data: SupplierFormValues) {
     setSubmitError("");
     try {
       await api.post("/api/suppliers", data);
-      reset({
-        name: "",
-        contactPerson: "",
-        phone: "",
-        email: "",
-        address: "",
-      });
+      reset(emptyDefaults);
       loadSuppliers();
     } catch (err: any) {
       setSubmitError(
         err.response?.data?.message || "Failed to create supplier"
       );
+    }
+  }
+
+  function openEditDialog(supplier: Supplier) {
+    setEditError("");
+    setEditingSupplier(supplier);
+    resetEdit({
+      name: supplier.name,
+      contactPerson: supplier.contactPerson ?? "",
+      phone: supplier.phone ?? "",
+      email: supplier.email ?? "",
+      address: supplier.address ?? "",
+      leadTimeDays: supplier.leadTimeDays ?? (undefined as unknown as number),
+    });
+  }
+
+  async function onEditSubmit(data: SupplierFormValues) {
+    if (!editingSupplier) return;
+    setEditError("");
+    try {
+      await api.patch(`/api/suppliers/${editingSupplier.id}`, data);
+      setEditingSupplier(null);
+      loadSuppliers();
+    } catch (err: any) {
+      setEditError(err.response?.data?.message || "Failed to update supplier");
     }
   }
 
@@ -122,7 +169,17 @@ export default function SuppliersPage() {
               <FieldError errors={[errors.email]} />
             </Field>
 
-            <Field className="sm:col-span-2 lg:col-span-2">
+            <Field>
+              <FieldLabel htmlFor="leadTimeDays">Lead Time (days)</FieldLabel>
+              <Input
+                id="leadTimeDays"
+                type="number"
+                {...register("leadTimeDays")}
+              />
+              <FieldError errors={[errors.leadTimeDays]} />
+            </Field>
+
+            <Field className="sm:col-span-2 lg:col-span-3">
               <FieldLabel htmlFor="address">Address</FieldLabel>
               <Input id="address" {...register("address")} />
               <FieldError errors={[errors.address]} />
@@ -159,6 +216,8 @@ export default function SuppliersPage() {
                   <th className="pb-2">Phone</th>
                   <th className="pb-2">Email</th>
                   <th className="pb-2">Address</th>
+                  <th className="pb-2">Lead Time</th>
+                  <th className="pb-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -170,6 +229,18 @@ export default function SuppliersPage() {
                     <td className="py-2">{s.phone}</td>
                     <td className="py-2">{s.email}</td>
                     <td className="py-2">{s.address}</td>
+                    <td className="py-2">
+                      {s.leadTimeDays != null ? (
+                        `${s.leadTimeDays} days`
+                      ) : (
+                        <span className="text-muted-foreground">Not set</span>
+                      )}
+                    </td>
+                    <td className="py-2 text-right">
+                      <Button variant="outline" size="sm" onClick={() => openEditDialog(s)}>
+                        Edit
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -203,6 +274,79 @@ export default function SuppliersPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={!!editingSupplier}
+        onOpenChange={(open) => !open && setEditingSupplier(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Supplier: {editingSupplier?.name}</DialogTitle>
+          </DialogHeader>
+
+          <form
+            onSubmit={handleEditSubmit(onEditSubmit)}
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 py-2"
+          >
+            <Field>
+              <FieldLabel htmlFor="edit-name">Name</FieldLabel>
+              <Input id="edit-name" {...registerEdit("name")} />
+              <FieldError errors={[editErrors.name]} />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="edit-contactPerson">Contact Person</FieldLabel>
+              <Input id="edit-contactPerson" {...registerEdit("contactPerson")} />
+              <FieldError errors={[editErrors.contactPerson]} />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="edit-phone">Phone</FieldLabel>
+              <Input id="edit-phone" {...registerEdit("phone")} />
+              <FieldError errors={[editErrors.phone]} />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="edit-email">Email</FieldLabel>
+              <Input id="edit-email" {...registerEdit("email")} />
+              <FieldError errors={[editErrors.email]} />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="edit-leadTimeDays">Lead Time (days)</FieldLabel>
+              <Input
+                id="edit-leadTimeDays"
+                type="number"
+                {...registerEdit("leadTimeDays")}
+              />
+              <FieldError errors={[editErrors.leadTimeDays]} />
+            </Field>
+
+            <Field className="sm:col-span-2">
+              <FieldLabel htmlFor="edit-address">Address</FieldLabel>
+              <Input id="edit-address" {...registerEdit("address")} />
+              <FieldError errors={[editErrors.address]} />
+            </Field>
+
+            {editError && (
+              <p className="sm:col-span-2 text-sm text-red-500">{editError}</p>
+            )}
+
+            <DialogFooter className="sm:col-span-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingSupplier(null)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isEditSubmitting}>
+                {isEditSubmitting ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

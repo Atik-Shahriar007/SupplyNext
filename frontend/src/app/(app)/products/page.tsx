@@ -80,10 +80,10 @@ export default function ProductsPage() {
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema),
-    defaultValues: emptyDefaults,
-  });
+} = useForm({
+  resolver: zodResolver(productSchema),
+  defaultValues: emptyDefaults,
+});
 
   const {
     register: registerEdit,
@@ -91,10 +91,10 @@ export default function ProductsPage() {
     handleSubmit: handleEditSubmit,
     reset: resetEdit,
     formState: { errors: editErrors, isSubmitting: isEditSubmitting },
-  } = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema),
-    defaultValues: emptyDefaults,
-  });
+} = useForm({
+  resolver: zodResolver(productSchema),
+  defaultValues: emptyDefaults,
+});
 
   function loadAll() {
     setLoading(true);

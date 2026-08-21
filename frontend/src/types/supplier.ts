@@ -5,7 +5,9 @@ export interface Supplier {
   phone: string;
   email: string;
   address: string;
+  leadTimeDays: number | null;
 }
+
 export interface PagedResponse<T> {
   content: T[];
   number: number;
