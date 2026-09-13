@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "sonner";
+import { TableSkeleton } from "@/components/TableSkeleton";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -91,15 +93,15 @@ export default function SuppliersPage() {
     loadSuppliers();
   }, [page]);
 
-  async function onSubmit(data: SupplierFormValues) {
-    setSubmitError("");
+    async function onSubmit(data: SupplierFormValues) {
     try {
       await api.post("/api/suppliers", data);
+      toast.success(`${data.name} added.`);
       reset(emptyDefaults);
       loadSuppliers();
     } catch (err: any) {
-      setSubmitError(
-        err.response?.data?.message || "Failed to create supplier"
+      toast.error(
+        err.response?.data?.message || "Couldn't add supplier. Check the form and try again."
       );
     }
   }
@@ -117,15 +119,17 @@ export default function SuppliersPage() {
     });
   }
 
-  async function onEditSubmit(data: SupplierFormValues) {
+    async function onEditSubmit(data: SupplierFormValues) {
     if (!editingSupplier) return;
-    setEditError("");
     try {
       await api.patch(`/api/suppliers/${editingSupplier.id}`, data);
+      toast.success(`${data.name} updated.`);
       setEditingSupplier(null);
       loadSuppliers();
     } catch (err: any) {
-      setEditError(err.response?.data?.message || "Failed to update supplier");
+      toast.error(
+        err.response?.data?.message || "Couldn't update supplier. Check the form and try again."
+      );
     }
   }
 
@@ -202,10 +206,12 @@ export default function SuppliersPage() {
           <CardTitle className="text-lg">All Suppliers</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <p>Loading...</p>
+        {loading ? (
+            <TableSkeleton columns={8} rows={5} />
           ) : suppliers.length === 0 ? (
-            <p className="text-muted-foreground">No suppliers yet.</p>
+            <p className="text-muted-foreground">
+              No suppliers yet — add your first one using the form above.
+            </p>
           ) : (
             <table className="w-full text-sm">
               <thead>

@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "sonner";
+import { TableSkeleton } from "@/components/TableSkeleton";
 import { Product, PagedResponse } from "@/types/product";
 import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -117,8 +119,7 @@ export default function ProductsPage() {
     loadAll();
   }, [page]);
 
-  async function onSubmit(data: ProductFormValues) {
-    setSubmitError("");
+    async function onSubmit(data: ProductFormValues) {
     try {
       await api.post("/api/products", {
         sku: data.sku,
@@ -131,15 +132,17 @@ export default function ProductsPage() {
         categoryId: Number(data.categoryId),
         supplierId: Number(data.supplierId),
       });
+      toast.success(`${data.name} added.`);
       reset(emptyDefaults);
       loadAll();
     } catch (err: any) {
-      setSubmitError(err.response?.data?.message || "Failed to create product");
+      toast.error(
+        err.response?.data?.message || "Couldn't add product. Check the form and try again."
+      );
     }
   }
 
   function openEditDialog(product: Product) {
-    setEditError("");
     setEditingProduct(product);
     resetEdit({
       sku: product.sku,
@@ -154,9 +157,8 @@ export default function ProductsPage() {
     });
   }
 
-  async function onEditSubmit(data: ProductFormValues) {
+    async function onEditSubmit(data: ProductFormValues) {
     if (!editingProduct) return;
-    setEditError("");
     try {
       await api.patch(`/api/products/${editingProduct.id}`, {
         sku: data.sku,
@@ -169,10 +171,13 @@ export default function ProductsPage() {
         categoryId: Number(data.categoryId),
         supplierId: Number(data.supplierId),
       });
+      toast.success(`${data.name} updated.`);
       setEditingProduct(null);
       loadAll();
     } catch (err: any) {
-      setEditError(err.response?.data?.message || "Failed to update product");
+      toast.error(
+        err.response?.data?.message || "Couldn't update product. Check the form and try again."
+      );
     }
   }
 
@@ -288,7 +293,6 @@ export default function ProductsPage() {
             </Field>
 
             <div className="sm:col-span-2 lg:col-span-3">
-              {submitError && <p className="mb-2 text-sm text-red-500">{submitError}</p>}
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "Adding..." : "Add Product"}
               </Button>
@@ -302,10 +306,12 @@ export default function ProductsPage() {
           <CardTitle className="text-lg">All Products</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <p>Loading...</p>
+                    {loading ? (
+            <TableSkeleton columns={7} rows={5} />
           ) : products.length === 0 ? (
-            <p className="text-muted-foreground">No products yet.</p>
+            <p className="text-muted-foreground">
+              No products yet — add your first one using the form above.
+            </p>
           ) : (
             <table className="w-full text-sm">
               <thead>
@@ -488,10 +494,6 @@ export default function ProductsPage() {
               />
               <FieldError errors={[editErrors.supplierId]} />
             </Field>
-
-            {editError && (
-              <p className="sm:col-span-2 text-sm text-red-500">{editError}</p>
-            )}
 
             <DialogFooter className="sm:col-span-2">
               <Button
