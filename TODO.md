@@ -166,3 +166,14 @@ frontend page, no recharts installation yet. This is a clean starting point.
   cross-checking supplier-performance against dashboard summary —
   worth remembering this kind of cross-KPI consistency check for future
   analytics work, not just isolated endpoint testing.
+
+- [x] Phase B: Smart Analytics — COMPLETE (backend + frontend)
+  All 7 features (EOQ, ABC Analysis, Safety Stock, Reorder Point,
+  Dead Stock Detection, Supplier Analytics, KPI Dashboard) built,
+  unit tested (26+ tests), and verified end-to-end via Postman.
+  Frontend: unified /analytics page with 6 tabs, recharts visualizations
+  (bar charts for EOQ/Safety Stock/Reorder Point/Supplier Performance,
+  pie chart for ABC tier distribution), Product/Supplier edit dialogs
+  for backfilling cost/lead-time data, Dashboard expanded to show all
+  new KPIs. Charts (item 8) delivered as part of this frontend work
+  rather than as a separate phase item.
